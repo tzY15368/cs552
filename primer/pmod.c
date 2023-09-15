@@ -2,16 +2,28 @@
  *  ioctl test module -- Rich West.
  */
 
+#include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/errno.h> /* error codes */
 #include <linux/proc_fs.h>
 #include <asm/uaccess.h>
 #include <linux/tty.h>
+
+#include <linux/uaccess.h>
+#include <linux/interrupt.h>
+#include <linux/irq.h>
+#include <asm/irq.h>
 #include <linux/sched.h>
+#include <linux/wait.h> // Include the wait header
+
 
 MODULE_LICENSE("GPL");
+#define KBD_IRQLINE 3
 
+static irqreturn_t kbd_irq_handler(int, void*);
+static unsigned short kbd_buffer = 0x0000; /* HByte=Status, LByte=Scancode */
+static wait_queue_head_t kbd_irq_waitq;
 
 /* 'printk' version that prints to active tty. */
 void my_printk(char *string)
@@ -98,16 +110,18 @@ struct ioctl_test_t {
 
 static int pseudo_device_ioctl(struct inode *inode, struct file *file,
 			       unsigned int cmd, unsigned long arg);
+static int pseudo_device_read(struct file *, char __user *, size_t, loff_t *);
 
 static struct file_operations pseudo_dev_proc_operations;
 
 static struct proc_dir_entry *proc_entry;
 
 static int __init mod_init(void) {
+  int req_ret;
   printk("<1> Loading module\n");
 
   pseudo_dev_proc_operations.ioctl = pseudo_device_ioctl;
-
+  pseudo_dev_proc_operations.read = pseudo_device_read;
   /* Start create proc entry */
   proc_entry = create_proc_entry("kbdev_test", 0444, NULL);
   if(!proc_entry)
@@ -119,6 +133,14 @@ static int __init mod_init(void) {
   //proc_entry->owner = THIS_MODULE; <-- This is now deprecated
   proc_entry->proc_fops = &pseudo_dev_proc_operations;
 
+  req_ret = request_irq(KBD_IRQLINE, kbd_irq_handler, IRQF_SHARED , "kbd", proc_entry);
+  if(req_ret!=0){
+    printk("<1> Error creating IRQ: %d.\n", req_ret);
+    my_printk("Error creating IRQ.\n");
+    return 1;
+  }
+	init_waitqueue_head(&kbd_irq_waitq);
+
   return 0;
 }
 
@@ -128,7 +150,7 @@ static void mod_cleanup(void) {
 
   printk("<1> Dumping module\n");
   remove_proc_entry("ioctl_test", NULL);
-
+  free_irq(KBD_IRQLINE, (void*) proc_entry);
   return;
 }
 
@@ -169,6 +191,31 @@ static int pseudo_device_ioctl(struct inode *inode, struct file *file,
   }
   
   return 0;
+}
+
+// Keyboard interrupt handler. Retrieves the character code (scancode)
+// and keyboard status from the keyboard I/O ports. Awakes processes
+// waiting for a keyboard event.
+static irqreturn_t kbd_irq_handler(int irq, void* dev_id)
+{
+	unsigned char status, scancode;
+	status = inb(0x64);
+	scancode = inb(0x60);
+	kbd_buffer = (unsigned short) ((status << 8) | (scancode & 0x00ff));
+  my_printk("did trigger handler");
+	wake_up_interruptible(&kbd_irq_waitq);
+  return IRQ_HANDLED;
+} // kbd_irq_handler()
+
+static int pseudo_device_read(struct file *file, char __user *buf, size_t size, loff_t *off)
+{
+	my_printk ("in kernel module read function\n");
+  interruptible_sleep_on(&kbd_irq_waitq);
+	// copy_to_user (buf, "hello!!!\0", 9);
+  
+	copy_to_user((void*) buf, (void*) &kbd_buffer, sizeof(kbd_buffer));
+  return(sizeof(kbd_buffer));
+	// return 0;
 }
 
 

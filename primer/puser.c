@@ -16,7 +16,15 @@ int main() {
         return 1;
     }
     printf("---");
+
+
+	char buf[100];
+	read(fd, buf, 100);
+	printf("read %s\n", buf);
     fflush(stdout);
+    exit(0);
+
+
     sleep(1);
     while (1) {
         // Call the my_getchar ioctl to read a character
