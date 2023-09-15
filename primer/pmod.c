@@ -12,6 +12,20 @@
 
 MODULE_LICENSE("GPL");
 
+
+/* 'printk' version that prints to active tty. */
+void my_printk(char *string)
+{
+  struct tty_struct *my_tty;
+
+  my_tty = current->signal->tty;
+
+  if (my_tty != NULL) {
+    (*my_tty->driver->ops->write)(my_tty, string, strlen(string));
+    (*my_tty->driver->ops->write)(my_tty, "\015\012", 2);
+  }
+} 
+
 static inline unsigned char inb( unsigned short usPort ) {
 
     unsigned char uch;
@@ -25,13 +39,17 @@ static inline void outb( unsigned char uch, unsigned short usPort ) {
     asm volatile( "outb %0,%1" : : "a" (uch), "Nd" (usPort) );
 }
 
+static int shift_pressed = 0;
+static int ctrl_pressed = 0;
+static int caps_pressed = 0;
+
 char my_getchar ( void ) {
 
   char c;
-
-  static char scancode[128] = "\0\e1234567890-=\177\tqwertyuiop[]\n\0asdfghjkl;'`\0\\zxcvbnm,./\0*\0 \0\0\0\0\0\0\0\0\0\0\0\0\000789-456+1230.\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-
-
+  char res;
+  static char scancode[128] = "\0\e1234567890-=\b\tqwertyuiop[]\n\0asdfghjkl;'`\0\\zxcvbnm,./\0*\0 \0\0\0\0\0\0\0\0\0\0\0\0\000789-456+1230.\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+  int prev_keypress = shift_pressed;
+  int prev_ctrl = ctrl_pressed;
   /* Poll keyboard status register at port 0x64 checking bit 0 to see if
    * output buffer is full. We continue to poll if the msb of port 0x60
    * (data port) is set, as this indicates out-of-band data or a release
@@ -39,8 +57,34 @@ char my_getchar ( void ) {
    */
   while( !(inb( 0x64 ) & 0x1) || ( ( c = inb( 0x60 ) ) & 0x80 ) );
 
-  return scancode[ (int)c ];
+  // return scancode[ (int)c ];
+    
+    printk("Got char %d %04x --> %c, shift press: %d  \n", c, c, scancode[(int)c], shift_pressed);
+    if(c == 42){ // 2a
+      shift_pressed = 1;
+    } else {
+      shift_pressed = 0;
+    }
 
+    if(c == 29){ // 1d
+      ctrl_pressed = 1;
+    } else {
+      ctrl_pressed = 0;
+    }
+    
+    if(c == 58){ // 3a
+      caps_pressed = !caps_pressed;
+    }
+
+    res = scancode[(int)c];
+    if (prev_keypress || caps_pressed) {
+      if (res >= 'a' && res <= 'z') {
+        res = res - 32;
+        printk("got caps: %d %c --> %c\n", res, res, res+32);
+        // printk("shift pressed: %d", res);
+      }
+    }
+    return res;
 }
 
 /* attribute structures */
@@ -78,18 +122,6 @@ static int __init mod_init(void) {
   return 0;
 }
 
-/* 'printk' version that prints to active tty. */
-void my_printk(char *string)
-{
-  struct tty_struct *my_tty;
-
-  my_tty = current->signal->tty;
-
-  if (my_tty != NULL) {
-    (*my_tty->driver->ops->write)(my_tty, string, strlen(string));
-    (*my_tty->driver->ops->write)(my_tty, "\015\012", 2);
-  }
-} 
 
 
 static void mod_cleanup(void) {
@@ -129,7 +161,7 @@ static int pseudo_device_ioctl(struct inode *inode, struct file *file,
     // }
     c = my_getchar();
     copy_to_user((char *)arg, &c, sizeof(char));
-    my_printk ("sent a\n");
+    // my_printk ("sent a\n");
     break;
   default:
     return -EINVAL;
@@ -138,17 +170,6 @@ static int pseudo_device_ioctl(struct inode *inode, struct file *file,
   
   return 0;
 }
-
-/***
- * read() entry point...
- */
-static int pseudo_device_read(struct file *file, char __user *buf, size_t size, loff_t *off)
-{
-	my_printk ("in kernel module read function\n");
-	copy_to_user (buf, "hello!!!\0", 9);
-	return 0;
-}
-
 
 
 module_init(mod_init); 

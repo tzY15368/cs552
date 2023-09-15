@@ -18,8 +18,7 @@ int main() {
     printf("---");
     fflush(stdout);
     sleep(1);
-    int i = 5;
-    while (i--) {
+    while (1) {
         // Call the my_getchar ioctl to read a character
         if (ioctl(fd, IOCTL_GETCH, &c) == -1) {
             perror("ioctl failed");
@@ -31,9 +30,14 @@ int main() {
         if (c == '\n' || c == 'q') {
             break;
         }
-
+        if (c == 127) {
+            printf("\b \b");
+            fflush(stdout);
+            continue;
+        }
         // Print the character
-        printf("Received: %c\n", c);
+        // printf("Received: %c\n %d", c, c);
+        printf("%c", c);
         fflush(stdout);
     }
 
