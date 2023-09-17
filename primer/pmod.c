@@ -9,19 +9,30 @@
 #include <linux/proc_fs.h>
 #include <asm/uaccess.h>
 #include <linux/tty.h>
-
+#include <asm/irq_vectors.h>
 #include <linux/uaccess.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <asm/irq.h>
 #include <linux/sched.h>
 #include <linux/wait.h> // Include the wait header
+#include <asm/desc.h>
 
 
 MODULE_LICENSE("GPL");
-#define KBD_IRQLINE 3
+#define KBD_IRQLINE 1
+
+#define PIC1_CMD 0x20        // PIC1 command port
+#define PIC1_DATA 0x21       // PIC1 data port
+#define PIC2_CMD 0xA0        // PIC2 command port
+#define PIC2_DATA 0xA1       // PIC2 data port
 
 static irqreturn_t kbd_irq_handler(int, void*);
+static irqreturn_t dummy_irq_handler(int, void*);
+static irqreturn_t kbd_default_handler(int, void*);
+// static irqreturn_t (*original_kbd_irq_handler)(int, void*);
+static irqreturn_t (*kbd_default_handler_ptr)(int, void*) = NULL;
+static unsigned char handle_char_input(char c);
 static unsigned short kbd_buffer = 0x0000; /* HByte=Status, LByte=Scancode */
 static wait_queue_head_t kbd_irq_waitq;
 
@@ -53,50 +64,20 @@ static inline void outb( unsigned char uch, unsigned short usPort ) {
 
 static int shift_pressed = 0;
 static int ctrl_pressed = 0;
-static int caps_pressed = 0;
+static int caps_pressed = 0;  
+static char scancode[128] = "\0\e1234567890-=\b\tqwertyuiop[]\n\0asdfghjkl;'`\0\\zxcvbnm,./\0*\0 \0\0\0\0\0\0\0\0\0\0\0\0\000789-456+1230.\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+
 
 char my_getchar ( void ) {
 
   char c;
-  char res;
-  static char scancode[128] = "\0\e1234567890-=\b\tqwertyuiop[]\n\0asdfghjkl;'`\0\\zxcvbnm,./\0*\0 \0\0\0\0\0\0\0\0\0\0\0\0\000789-456+1230.\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
-  int prev_keypress = shift_pressed;
-  int prev_ctrl = ctrl_pressed;
   /* Poll keyboard status register at port 0x64 checking bit 0 to see if
    * output buffer is full. We continue to poll if the msb of port 0x60
    * (data port) is set, as this indicates out-of-band data or a release
    * keystroke
    */
   while( !(inb( 0x64 ) & 0x1) || ( ( c = inb( 0x60 ) ) & 0x80 ) );
-
-  // return scancode[ (int)c ];
-    
-    printk("Got char %d %04x --> %c, shift press: %d  \n", c, c, scancode[(int)c], shift_pressed);
-    if(c == 42){ // 2a
-      shift_pressed = 1;
-    } else {
-      shift_pressed = 0;
-    }
-
-    if(c == 29){ // 1d
-      ctrl_pressed = 1;
-    } else {
-      ctrl_pressed = 0;
-    }
-    
-    if(c == 58){ // 3a
-      caps_pressed = !caps_pressed;
-    }
-
-    res = scancode[(int)c];
-    if (prev_keypress || caps_pressed) {
-      if (res >= 'a' && res <= 'z') {
-        res = res - 32;
-        printk("got caps: %d %c --> %c\n", res, res, res+32);
-        // printk("shift pressed: %d", res);
-      }
-    }
-    return res;
+  return handle_char_input(c);
 }
 
 /* attribute structures */
@@ -116,9 +97,39 @@ static struct file_operations pseudo_dev_proc_operations;
 
 static struct proc_dir_entry *proc_entry;
 
+static void disable_default_kb(){
+    unsigned char mask = inb(PIC1_DATA);
+    mask |= (1 << KBD_IRQLINE);
+    outb(mask, PIC1_DATA);
+    printk("kb disabled: %d\n", mask);
+}
+
+static void enable_default_kb(){
+  // unsigned char mask = inb(PIC1_DATA);
+  //   mask &= ~(1 << KBD_IRQLINE);
+  //   outb(mask, PIC1_DATA);
+  //   printk("kb enabled: %d\n", mask);
+  struct desc_ptr idtr;
+  // Access the IDT descriptor
+  store_idt(&idtr);
+
+  // Calculate the address of the keyboard interrupt entry (IRQ 1)
+  unsigned long idt_base = idtr.address;
+  gate_desc *idt_entry = (gate_desc *)(idt_base + 1 * sizeof(gate_desc));
+}
+
 static int __init mod_init(void) {
   int req_ret;
-  printk("<1> Loading module\n");
+  int free_ret;
+
+  remove_proc_entry("ioctl_test", NULL);
+
+  printk("<1> Loading module\n");    
+  // original_kbd_irq_handler = irq_get_handler(KBD_IRQLINE);
+
+  // free_irq(KBD_IRQLINE, NULL);
+
+  // printk("<1> Original handler: %p\n", kbd_default_handler_ptr);
 
   pseudo_dev_proc_operations.ioctl = pseudo_device_ioctl;
   pseudo_dev_proc_operations.read = pseudo_device_read;
@@ -140,6 +151,9 @@ static int __init mod_init(void) {
     return 1;
   }
 	init_waitqueue_head(&kbd_irq_waitq);
+  
+  // outb(inb(0x21) | (1 << KBD_IRQLINE), 0x21);
+  disable_default_kb();
 
   return 0;
 }
@@ -151,6 +165,12 @@ static void mod_cleanup(void) {
   printk("<1> Dumping module\n");
   remove_proc_entry("ioctl_test", NULL);
   free_irq(KBD_IRQLINE, (void*) proc_entry);
+  outb(inb(0x21) & ~(1 << KBD_IRQLINE), 0x21);
+  enable_default_kb();
+  // if(original_kbd_irq_handler){
+  //   // irq_set_handler(KBD_IRQLINE, original_kbd_irq_handler);
+  //   request_irq(KBD_IRQLINE, original_kbd_irq_handler, IRQF_SHARED , "kbd", NULL);
+  // }
   return;
 }
 
@@ -193,26 +213,76 @@ static int pseudo_device_ioctl(struct inode *inode, struct file *file,
   return 0;
 }
 
+static unsigned char handle_char_input(char c){
+  char res;
+  int prev_keypress = shift_pressed;
+  int prev_ctrl = ctrl_pressed;
+  if(c == 42){ // 2a
+      shift_pressed = 1;
+    } else {
+      shift_pressed = 0;
+    }
+
+    if(c == 29){ // 1d
+      ctrl_pressed = 1;
+    } else {
+      ctrl_pressed = 0;
+    }
+    
+    if(c == 58){ // 3a
+      caps_pressed = !caps_pressed;
+  }
+  res = scancode[(int)c];
+  if (prev_keypress || caps_pressed) {
+    if (res >= 'a' && res <= 'z') {
+      res = res - 32;
+      printk("got caps: %d %c --> %c\n", res, res, res+32);
+      // printk("shift pressed: %d", res);
+    }
+  }
+  return res;
+}
+
 // Keyboard interrupt handler. Retrieves the character code (scancode)
 // and keyboard status from the keyboard I/O ports. Awakes processes
 // waiting for a keyboard event.
 static irqreturn_t kbd_irq_handler(int irq, void* dev_id)
 {
-	unsigned char status, scancode;
+	unsigned char status, c;
+  unsigned char result;
 	status = inb(0x64);
-	scancode = inb(0x60);
-	kbd_buffer = (unsigned short) ((status << 8) | (scancode & 0x00ff));
-  my_printk("did trigger handler");
+	c = inb(0x60);
+  if(c > 128){
+    return IRQ_HANDLED;
+  }
+  result = handle_char_input(c);
+	//kbd_buffer = (unsigned short) ((status << 8) | (c & 0x00ff));
+  kbd_buffer = (unsigned short) result;
+  // my_printk("did trigger handler");
+  // handle_char_input(c);
+  printk("kbd_irq: char %d %04x --> %c (%c) , shift press: %d  \n", c, c, scancode[(int)c], result,  shift_pressed);
+
 	wake_up_interruptible(&kbd_irq_waitq);
   return IRQ_HANDLED;
 } // kbd_irq_handler()
 
+static irqreturn_t dummy_irq_handler(int, void*){
+  printk("dummy irq handler\n");
+  return IRQ_HANDLED;
+}
+
 static int pseudo_device_read(struct file *file, char __user *buf, size_t size, loff_t *off)
 {
-	my_printk ("in kernel module read function\n");
+  char buffer[128]; // Adjust the buffer size as needed
+	// my_printk ("in kernel module read function\n");
   interruptible_sleep_on(&kbd_irq_waitq);
 	// copy_to_user (buf, "hello!!!\0", 9);
-  
+    
+    // Format a string into the buffer using snprintf
+  snprintf(buffer, sizeof(buffer), "did wakeup -- kbd-buffer: %d\n", kbd_buffer);
+  buffer[sizeof(buffer) - 1] = '\0'; // snprintf does not guarantee null termination
+
+  // my_printk(buffer);
 	copy_to_user((void*) buf, (void*) &kbd_buffer, sizeof(kbd_buffer));
   return(sizeof(kbd_buffer));
 	// return 0;

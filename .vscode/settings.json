@@ -1,5 +1,11 @@
 {
     "files.associations": {
-        "module.h": "c"
+        "module.h": "c",
+        "errno.h": "c",
+        "kernel.h": "c",
+        "sched.h": "c",
+        "interrupt.h": "c",
+        "irq_vectors.h": "c",
+        "uaccess.h": "c"
     }
 }
