@@ -1,0 +1,15 @@
+a  wait queue for process at user level
+
+no polled keyboard driver? register driver to -- wakeup process waiting for kb input
+interrupt handler to get kb scancodes and convert to ascii and also wakeup process waiting for kb input
+ -- unregister on unload
+
+ either unregister or piggybucack with existing 
+irq
+ look at function called request_irqueue
+ 
+ what functions are avaiable to impl wait queues in the linux kernel
+ event waiting kernel functions
+ event wait queues 
+ !! add calling process to a wait queue
+
