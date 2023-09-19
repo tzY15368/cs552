@@ -6,6 +6,7 @@
         "sched.h": "c",
         "interrupt.h": "c",
         "irq_vectors.h": "c",
-        "uaccess.h": "c"
+        "uaccess.h": "c",
+        "irq.h": "c"
     }
 }

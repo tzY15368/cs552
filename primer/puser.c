@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     printf("Using %s\n", use_poll ? "poll" : "interrupt");
     sleep(1);
 
-    fd = open("/proc/kbdev_test", O_RDONLY);
+    fd = open("/proc/ioctl_test", O_RDONLY);
     if (fd == -1) {
         perror("Failed to open the device");
         return 1;
@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
         }
         // Print the character
         // printf("Received: %c\n %d", c, c);
-        printf("%c--", c);
+        printf("%c", c);
         fflush(stdout);
     }
 

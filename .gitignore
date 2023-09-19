@@ -5,3 +5,5 @@
 *.cmd
 .tmp_versions
 u
+*.exe
+*.mod.o*

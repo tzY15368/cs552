@@ -7,16 +7,16 @@
 #include <linux/init.h>
 #include <linux/errno.h> /* error codes */
 #include <linux/proc_fs.h>
-#include <asm/uaccess.h>
 #include <linux/tty.h>
-#include <asm/irq_vectors.h>
 #include <linux/uaccess.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
-#include <asm/irq.h>
 #include <linux/sched.h>
 #include <linux/wait.h> // Include the wait header
 #include <asm/desc.h>
+#include <asm/uaccess.h>
+#include <asm/irq.h>
+#include <asm/irq_vectors.h>
 
 
 MODULE_LICENSE("GPL");
@@ -29,9 +29,8 @@ MODULE_LICENSE("GPL");
 
 static irqreturn_t kbd_irq_handler(int, void*);
 static irqreturn_t dummy_irq_handler(int, void*);
-static irqreturn_t kbd_default_handler(int, void*);
-// static irqreturn_t (*original_kbd_irq_handler)(int, void*);
 static irqreturn_t (*kbd_default_handler_ptr)(int, void*) = NULL;
+
 static unsigned char handle_char_input(char c);
 static unsigned short kbd_buffer = 0x0000; /* HByte=Status, LByte=Scancode */
 static wait_queue_head_t kbd_irq_waitq;
@@ -98,10 +97,32 @@ static struct file_operations pseudo_dev_proc_operations;
 static struct proc_dir_entry *proc_entry;
 
 static void disable_default_kb(){
-    unsigned char mask = inb(PIC1_DATA);
-    mask |= (1 << KBD_IRQLINE);
-    outb(mask, PIC1_DATA);
-    printk("kb disabled: %d\n", mask);
+    // unsigned char mask = inb(PIC1_DATA);
+    // mask |= (1 << KBD_IRQLINE);
+    // outb(mask, PIC1_DATA);
+    // printk("kb disabled: %d\n", mask);
+  struct desc_ptr idtr;
+  store_idt(&idtr); 
+  local_irq_disable();
+  unsigned long handler_address;
+  unsigned long idt_base = idtr.address;
+  gate_desc *idt_entry = (gate_desc *)(idt_base + 1 * sizeof(gate_desc));
+  printk("gate type: %d\n", idt_entry->type);
+
+  // Extract the offset of the default handler    
+  handler_address = (idt_entry->base0) |
+                      (idt_entry->base1 << 16) |
+                      (idt_entry->base2 << 24);
+  kbd_default_handler_ptr = (irqreturn_t (*)(int, void*))handler_address;
+
+  handler_address = (unsigned long)dummy_irq_handler;
+  idt_entry->base0 = (unsigned short)(handler_address & 0xFFFF);
+  idt_entry->base1 = (unsigned char)((handler_address >> 16) & 0xFF);
+  idt_entry->base2 = (unsigned char)((handler_address >> 24) & 0xFF);
+
+  local_irq_enable();
+  load_idt(&idtr);
+  printk("Reset Keyboard IRQ Handler Address: default: 0x%lx, dummy: 0x%lx\n", (unsigned long) kbd_default_handler_ptr, (unsigned long)dummy_irq_handler);
 }
 
 static void enable_default_kb(){
@@ -109,18 +130,28 @@ static void enable_default_kb(){
   //   mask &= ~(1 << KBD_IRQLINE);
   //   outb(mask, PIC1_DATA);
   //   printk("kb enabled: %d\n", mask);
-  struct desc_ptr idtr;
+  struct desc_ptr idtr, idtr_new;
+  unsigned long default_handler = (unsigned long)kbd_default_handler_ptr;
+
   // Access the IDT descriptor
   store_idt(&idtr);
 
   // Calculate the address of the keyboard interrupt entry (IRQ 1)
   unsigned long idt_base = idtr.address;
   gate_desc *idt_entry = (gate_desc *)(idt_base + 1 * sizeof(gate_desc));
+
+
+  idt_entry->base0 = (unsigned short)(default_handler & 0xFFFF);
+  idt_entry->base1 = (unsigned char)((default_handler >> 16) & 0xFF);
+  idt_entry->base2 = (unsigned char)((default_handler >> 24) & 0xFF);
+  
+  // loading the same IDT should be fine?
+  load_idt(&idtr);
+  printk("Unset Keyboard IRQ Handler Address: back to: 0x%lx\n", default_handler);
 }
 
 static int __init mod_init(void) {
   int req_ret;
-  int free_ret;
 
   remove_proc_entry("ioctl_test", NULL);
 
@@ -129,12 +160,13 @@ static int __init mod_init(void) {
 
   // free_irq(KBD_IRQLINE, NULL);
 
+  disable_default_kb();
   // printk("<1> Original handler: %p\n", kbd_default_handler_ptr);
 
   pseudo_dev_proc_operations.ioctl = pseudo_device_ioctl;
   pseudo_dev_proc_operations.read = pseudo_device_read;
   /* Start create proc entry */
-  proc_entry = create_proc_entry("kbdev_test", 0444, NULL);
+  proc_entry = create_proc_entry("ioctl_test", 0444, NULL);
   if(!proc_entry)
   {
     printk("<1> Error creating /proc entry.\n");
@@ -153,7 +185,6 @@ static int __init mod_init(void) {
 	init_waitqueue_head(&kbd_irq_waitq);
   
   // outb(inb(0x21) | (1 << KBD_IRQLINE), 0x21);
-  disable_default_kb();
 
   return 0;
 }
@@ -248,6 +279,18 @@ static unsigned char handle_char_input(char c){
 // waiting for a keyboard event.
 static irqreturn_t kbd_irq_handler(int irq, void* dev_id)
 {
+  struct desc_ptr idtr;
+  store_idt(&idtr); 
+  local_irq_disable();
+  unsigned long handler_address;
+  unsigned long idt_base = idtr.address;
+  gate_desc *idt_entry = (gate_desc *)(idt_base + 1 * sizeof(gate_desc));
+
+  // Extract the offset of the default handler    
+  handler_address = (idt_entry->base0) |
+                      (idt_entry->base1 << 16) |
+                      (idt_entry->base2 << 24);
+  printk("handler: gate type: %d, handler addr: 0x%lx\n", idt_entry->type, handler_address);
 	unsigned char status, c;
   unsigned char result;
 	status = inb(0x64);
@@ -266,7 +309,7 @@ static irqreturn_t kbd_irq_handler(int irq, void* dev_id)
   return IRQ_HANDLED;
 } // kbd_irq_handler()
 
-static irqreturn_t dummy_irq_handler(int, void*){
+static irqreturn_t dummy_irq_handler(int irq, void* dev_id){
   printk("dummy irq handler\n");
   return IRQ_HANDLED;
 }
