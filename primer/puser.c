@@ -5,30 +5,36 @@
 
 #define IOCTL_GETCH _IOR('k', 7, char)
 
-static char get_char_poll(int fd){
+static char* get_char_poll(int fd, char* c_buf){
     char c;
     // Call the my_getchar ioctl to read a character
     if (ioctl(fd, IOCTL_GETCH, &c) == -1) {
         perror("ioctl failed");
         close(fd);
-        return -1;
+        return NULL;
     }
-    return c;
+    c_buf[0] = c;
+    return c_buf;
 }
 
-static char get_char_interrupt(int fd){
-    char buf[2];
-	if(read(fd, buf, 2) == -1){
+static char* get_char_interrupt(int fd, char* c_buf){
+    char buf[10];
+    int i;
+	if(read(fd, buf, 10) == -1){
         perror("read failed");
         close(fd);
-        return -1;
+        return NULL;
     }
-    return buf[0];
+    for(i = 0; i < 10; i++){
+        c_buf[i] = buf[i];
+    }
+    return c_buf;
 }
 
 int main(int argc, char *argv[]) {
     int fd;
-    char c;
+    char _c[10];
+    char* c = _c;
     int i;
     int use_poll = 0; // Default to using poll
     // Open the character device file
@@ -72,28 +78,35 @@ int main(int argc, char *argv[]) {
         // c = get_char_poll(fd);
         
         if (use_poll) {
-            c = get_char_poll(fd);
+            c = get_char_poll(fd, c);
         } else {
-            c = get_char_interrupt(fd);
+            c = get_char_interrupt(fd, c);
         }
-        if (c == -1) {
+        if (c == NULL) {
             printf("Error reading from device\n");
             break;
         }
 
-        // Check if it's the Enter key to exit the program
-        if (c == '\n' || c == 'q') {
-            break;
-        }
-        if (c == 127) {
-            printf("\b \b");
-            fflush(stdout);
+        if(c[0] == '\0'){
             continue;
         }
+        if(c[1] == '\0'){
+            if (c[0] == '\n' || c[0] == 'q') {
+                break;
+            }
+            if (c[0] == 127) {
+                printf("\b \b");
+                fflush(stdout);
+                continue;
+            }
+        }
+        // Check if it's the Enter key to exit the program
+        
         // Print the character
         // printf("Received: %c\n %d", c, c);
-        printf("%c", c);
+        printf("\033[32;1m%s\033[0m", c);
         fflush(stdout);
+        // getch();
     }
 
     // Close the device file
