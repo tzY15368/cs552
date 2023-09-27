@@ -102,14 +102,43 @@ static struct file_operations pseudo_dev_proc_operations;
 
 static struct proc_dir_entry *proc_entry;
 
+
+void IRQ_set_mask(uint8_t IRQline) {
+    unsigned short port;
+    unsigned char value;
+ 
+    if(IRQline < 8) {
+        port = PIC1_DATA;
+    } else {
+        port = PIC2_DATA;
+        IRQline -= 8;
+    }
+    value = inb(port) | (1 << IRQline);
+    outb(port, value);   
+    printk("kb disabled: %d\n", value);         
+}
+ 
+void IRQ_clear_mask(uint8_t IRQline) {
+    unsigned short port;
+    unsigned char value;
+ 
+    if(IRQline < 8) {
+        port = PIC1_DATA;
+    } else {
+        port = PIC2_DATA;
+        IRQline -= 8;
+    }
+    value = inb(port) & ~(1 << IRQline);
+    outb(port, value);  
+    printk("kb enabled: %d\n", value);  
+}
+
 static void disable_default_kb(){
-    unsigned char mask = inb(PIC1_DATA);
-    mask |= (1 << KBD_IRQLINE);
-    outb(mask, PIC1_DATA);
-    printk("kb disabled: %d\n", mask);
+  local_irq_disable();
+  IRQ_set_mask(KBD_IRQLINE);
+
   struct desc_ptr idtr;
   store_idt(&idtr); 
-  local_irq_disable();
   unsigned long handler_address;
   unsigned long idt_base = idtr.address;
   gate_desc *idt_entry = (gate_desc *)(idt_base + 1 * sizeof(gate_desc));
@@ -132,10 +161,9 @@ static void disable_default_kb(){
 }
 
 static void enable_default_kb(){
-  unsigned char mask = inb(PIC1_DATA);
-    mask &= ~(1 << KBD_IRQLINE);
-    outb(mask, PIC1_DATA);
-    printk("kb enabled: %d\n", mask);
+  local_irq_disable();
+  IRQ_clear_mask(KBD_IRQLINE);
+  
   struct desc_ptr idtr, idtr_new;
   unsigned long default_handler = (unsigned long)kbd_default_handler_ptr;
 
@@ -152,6 +180,7 @@ static void enable_default_kb(){
   idt_entry->base2 = (unsigned char)((default_handler >> 24) & 0xFF);
   
   // loading the same IDT should be fine?
+  local_irq_enable();
   load_idt(&idtr);
   printk("Unset Keyboard IRQ Handler Address: back to: 0x%lx\n", default_handler);
 }
@@ -201,7 +230,7 @@ static void mod_cleanup(void) {
   printk("<1> Dumping module\n");
   remove_proc_entry("ioctl_test", NULL);
   free_irq(KBD_IRQLINE, (void*) proc_entry);
-  outb(inb(0x21) & ~(1 << KBD_IRQLINE), 0x21);
+  
   enable_default_kb();
   // if(original_kbd_irq_handler){
   //   // irq_set_handler(KBD_IRQLINE, original_kbd_irq_handler);
