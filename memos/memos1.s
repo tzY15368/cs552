@@ -59,11 +59,11 @@ do_e820_loop:
     addl %eax, %es:(%di)
     
     # movl %es:(%di), %eax
-    call print_4_bytes
+    # call print_4_bytes
 
-    leaw nlstr, %si
-    movw nlstr_len, %cx
-    call print
+    # leaw nlstr, %si
+    # movw nlstr_len, %cx
+    # call print
 
     pop %di
     pop %eax
@@ -166,10 +166,11 @@ range_loop:
 
     # print start address
 
-    #movl %es:4(%di), %eax
-	#call print_4_bytes
-    #movl %es:(%di), %eax 
-    #call print_4_bytes
+	movl %es:4(%di), %edx   # Base address 4 MSBs
+    movl %es:4(%di), %eax
+    call print_4_bytes
+    movl %es:(%di), %eax 
+    call print_4_bytes
 
     # Save %eax
     pusha
@@ -179,6 +180,7 @@ range_loop:
 
     # print end address
     
+    movl %es:(%di), %eax 
 	addl %es:8(%di), %eax  
 	push %eax 	    
     adcl %es:12(%di), %edx
@@ -188,9 +190,9 @@ range_loop:
 	call print_4_bytes
 
     # print status
-    leaw status, %si
-    movw status_len, %cx
-    call print
+    #leaw status, %si
+    #movw status_len, %cx
+    #call print
 
     # print status num
     mov %es:16(%di), %al
