@@ -12,6 +12,7 @@ _start:
 	# movl entrybufferbase, %es:(%di) 
 
     movb $0, [mementrycnt]
+    movl $0, [memcnt]
 
     call probe_mem
 
@@ -36,6 +37,7 @@ probe_mem:
     movw $0x2000, %di
     xorl %ebx, %ebx
     xorw %bp , %bp
+
 do_e820_loop:
 	movl $0xe820, %eax
 	movl $0x0534D4150, %edx
@@ -48,6 +50,24 @@ do_e820_loop:
 	testl %ebx, %ebx
 	je e820f
 
+    # add memory to es:0x6000
+    push %eax
+    mov %es:8(%di), %eax
+    push %di
+    mov $0x6000, %di
+    
+    addl %eax, %es:(%di)
+    
+    # movl %es:(%di), %eax
+    call print_4_bytes
+
+    leaw nlstr, %si
+    movw nlstr_len, %cx
+    call print
+
+    pop %di
+    pop %eax
+
     # print stuff
     push %cx
 
@@ -57,14 +77,14 @@ do_e820_loop:
     movb %al, [mementrycnt]
 
     # print di
-    push %eax
+    #push %eax
     # movl %di, %edx   # Base address 4 MSBs
-	mov %di, %ax
-	call print_4_bytes
-    leaw nlstr, %si
-    movw nlstr_len, %cx
-    call print
-    pop %eax
+	#mov %di, %ax
+	#call print_4_bytes
+    #leaw nlstr, %si
+    #movw nlstr_len, %cx
+    #call print
+    #pop %eax
 
     pop %cx
     # increment di by 24
@@ -90,9 +110,16 @@ print_mem_all:
 	movw msg_len, %cx
 	call print
     # set eax to 0x0100
-    movw memcnt, %di
+    
+    movw $0x6000, %di
     movl %es:(%di), %eax
-    # Save %eax
+    
+    # shift eax right 19 bits
+    shr $19, %eax
+    add $1, %eax
+    # shift right 1 more
+    shr $1, %eax
+    
 	push %eax
 	shr $8, %eax           # Print MSB first
 	call print_byte        
@@ -108,9 +135,9 @@ print_mem_all:
     movw nlstr_len, %cx
     call print
 
-    movb [mementrycnt], %al
-    addb $48, %al
-    call printch
+    #movb [mementrycnt], %al
+    #addb $48, %al
+    #call printch
 
     popa
     ret
@@ -131,10 +158,10 @@ range_loop:
     #call print
 
     # print di
-    push %eax
-    mov %di, %ax
-    call print_4_bytes
-    pop %eax
+    #push %eax
+    #mov %di, %ax
+    #call print_4_bytes
+    #pop %eax
 
 
     # print start address
@@ -241,7 +268,7 @@ printerr:
     call print
     jmp end
 
-memcnt: .word 0x0
+memcnt: .word 1010
 mementrycnt: .word 0x1000
 entrybufferbase: .word 0x2000
 
