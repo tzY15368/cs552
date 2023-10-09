@@ -9,7 +9,6 @@ _start:
 	movw $0x7C0, %dx # Load the MBR ar 0x7C00
 	movw %dx, %ds    # BIOS loads the MBR at 0x7C00
     
-
     movb $0, [mementrycnt]
 
     call probe_mem
@@ -21,15 +20,12 @@ _start:
 
 	call print_mem_all
 
-    #jmp end
-
     leaw nlstr, %si
     movw nlstr_len, %cx
     call print
 
     call print_mem_range
 
-    #jmp end
     hlt
 
 probe_mem:
@@ -56,36 +52,15 @@ do_e820_loop:
     mov $0x6000, %di
     
     addl %eax, %es:(%di)
-    
-    # movl %es:(%di), %eax
-    # call print_4_bytes
-
-    # leaw nlstr, %si
-    # movw nlstr_len, %cx
-    # call print
 
     pop %di
     pop %eax
-
-    # print stuff
-    push %cx
 
     # increment integer at mementrycnt
     movb [mementrycnt], %al
     addb $1, %al 
     movb %al, [mementrycnt]
 
-    # print di
-    #push %eax
-    # movl %di, %edx   # Base address 4 MSBs
-	#mov %di, %ax
-	#call print_4_bytes
-    #leaw nlstr, %si
-    #movw nlstr_len, %cx
-    #call print
-    #pop %eax
-
-    pop %cx
     # increment di by 24
     add $24, %di
     jne do_e820_loop
@@ -130,14 +105,6 @@ print_mem_all:
     movw mbstr_len, %cx
     call print
 
-    leaw nlstr, %si
-    movw nlstr_len, %cx
-    call print
-
-    #movb [mementrycnt], %al
-    #addb $48, %al
-    #call printch
-
     popa
     ret
 
@@ -152,19 +119,11 @@ range_loop:
     # print range txt
     push %ecx
 
-    #leaw addr_range, %si
-    #movw addr_range_len, %cx
-    #call print
-
-    # print di
-    #push %eax
-    #mov %di, %ax
-    #call print_4_bytes
-    #pop %eax
-
+    leaw addr_range, %si
+    movw addr_range_len, %cx
+    call print
 
     # print start address
-
 	movl %es:4(%di), %edx   # Base address 4 MSBs
     movl %es:4(%di), %eax
     call print_4_bytes
@@ -178,7 +137,6 @@ range_loop:
     popa
 
     # print end address
-    
     movl %es:(%di), %eax 
 	addl %es:8(%di), %eax  
 	push %eax 	    
@@ -201,7 +159,6 @@ range_loop:
     leaw nlstr, %si
     movw nlstr_len, %cx
     call print
-    # increment %di by 20
     add $24, %di
     pop %ecx
     loop range_loop
@@ -224,14 +181,15 @@ loop_shifts:
 	ret
 
 print_byte:	
-    pushw %dx
+	pusha
+	pushw %dx
 	movb %al, %dl
 	shrb $4, %al
 	cmpb $10, %al
 	jge 1f
 	addb $0x30, %al
 	jmp 2f
-1:	addb $55, %al		
+1:	addb $55, %al
 2:	movb $0x0E, %ah
 	movw $0x07, %bx
 	int $0x10
@@ -247,6 +205,7 @@ print_byte:
 	movw $0x07, %bx
 	int $0x10
 	popw %dx
+	popa
 	ret
 
 
@@ -283,7 +242,7 @@ addr_range_len:.word . - addr_range -1
 status:.asciz "] status: "
 status_len:.word . - status -1
 
-mbstr: .asciz "MB"
+mbstr: .asciz "MB\n\r"
 mbstr_len:.word . - mbstr -1
 
 nlstr: .asciz "\n\r"
