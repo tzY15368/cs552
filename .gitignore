@@ -8,3 +8,5 @@ u
 *.exe
 *.mod.o*
 *.mod.c
+cp
+*.bin

@@ -9,10 +9,8 @@ _start:
 	movw $0x7C0, %dx # Load the MBR ar 0x7C00
 	movw %dx, %ds    # BIOS loads the MBR at 0x7C00
     
-	# movl entrybufferbase, %es:(%di) 
 
     movb $0, [mementrycnt]
-    movl $0, [memcnt]
 
     call probe_mem
 
@@ -31,7 +29,8 @@ _start:
 
     call print_mem_range
 
-    jmp end
+    #jmp end
+    hlt
 
 probe_mem:
     movw $0x2000, %di
@@ -190,9 +189,9 @@ range_loop:
 	call print_4_bytes
 
     # print status
-    #leaw status, %si
-    #movw status_len, %cx
-    #call print
+    leaw status, %si
+    movw status_len, %cx
+    call print
 
     # print status num
     mov %es:16(%di), %al
@@ -268,11 +267,9 @@ printerr:
     leaw errmsg, %si
     movw errmsg_len, %cx
     call print
-    jmp end
+    hlt
 
-memcnt: .word 1010
 mementrycnt: .word 0x1000
-entrybufferbase: .word 0x2000
 
 errmsg: .asciz "err"
 errmsg_len: .word . - errmsg -1
@@ -292,8 +289,8 @@ mbstr_len:.word . - mbstr -1
 nlstr: .asciz "\n\r"
 nlstr_len:.word . - nlstr -1
 
-end:
-	hlt
+#end:
+#	hlt
 
 # This is going to be in our MBR for Bochs, so we need a valid signature
 	.org 0x1FE

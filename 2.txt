@@ -1,3 +1,5 @@
 vmhgfs-fuse .host:/ /mnt/hgfs -o subtype=vmhgfs-fuse,allow_other,nonempty
 
 cd /mnt/hgfs/mounted/552/primer
+
+pmemsave 0x0 1048576 
