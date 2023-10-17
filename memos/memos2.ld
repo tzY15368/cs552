@@ -5,9 +5,9 @@ ENTRY(_start);
 
 SECTIONS
 {
-    . = 0x100000;
+    . = 0x120000;
     .text : {
-        *(.text)
+        *(.multiboot .text)
     }
     .data : {
         *(.data)
