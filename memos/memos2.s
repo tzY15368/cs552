@@ -14,7 +14,8 @@ stack_space:
 real_start:
 	
 	mov $stack_space, %esp
-	call print_memory_size
+	push %ebx
+	call c_handle_boot
 
 	hlt
 	jmp .-1
