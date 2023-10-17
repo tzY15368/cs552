@@ -9,7 +9,7 @@ _start:
 	movw $0x7C0, %dx # Load the MBR ar 0x7C00
 	movw %dx, %ds    # BIOS loads the MBR at 0x7C00
     
-    movb $0, [mementrycnt]
+    movb $0, mementrycnt
 
     call probe_mem
 
@@ -57,9 +57,9 @@ do_e820_loop:
     pop %eax
 
     # increment integer at mementrycnt
-    movb [mementrycnt], %al
+    movb mementrycnt, %al
     addb $1, %al 
-    movb %al, [mementrycnt]
+    movb %al, mementrycnt
 
     # increment di by 24
     add $24, %di
@@ -112,7 +112,7 @@ print_mem_range:
     pusha
 
     # load loop counter
-    movb [mementrycnt], %cl
+    movb mementrycnt, %cl
     movw $0x2000, %di
 
 range_loop:
