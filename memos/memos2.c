@@ -16,12 +16,10 @@ typedef struct multiboot_info {
 
 typedef struct multiboot_memory_map {
     unsigned int size;
-    unsigned int base_addr_low;
-    unsigned int base_addr_high;
-    unsigned int length_low;
-    unsigned int length_high;
+    unsigned long long base_addr;
+    unsigned long long length;
     unsigned int type;
-} multiboot_memory_map_t;
+} multiboot_mmap_entry_t;
 
 char *video = (char *)0xB8000;
 
@@ -39,23 +37,22 @@ void itoa(unsigned int value, char *str) {
     }
 }
 
-void itoa16(unsigned int value, char *str) {
-    char *start = str;
-    do {
+void itoa16(unsigned long long value, char *str) {
+    int i;
+    for(i = 7; i >= 0; i--) {
+        if(value == 0) {
+            str[i] = '0';
+            continue;
+        }
         unsigned int digit = value % 16;
-        if (digit < 10) {
-            *str++ = '0' + digit;
+        if(digit < 10) {
+            str[i] = '0' + digit;
         } else {
-            *str++ = 'a' + digit - 10;
+            str[i] = 'A' + digit - 10;
         }
         value /= 16;
-    } while (value);
-    *str-- = '\0';
-    while (start < str) {
-        char temp = *start;
-        *start++ = *str;
-        *str-- = temp;
     }
+    str[8] = '\0';
 }
 
 void print_memory_size(unsigned int size) {
@@ -82,54 +79,40 @@ void print_memory_size(unsigned int size) {
     }
 }
 
-void print_memory_map_entry(multiboot_memory_map_t *mmap) {
-    char *msg = "Memory [0x";
+void print_memory_map_entry(multiboot_mmap_entry_t *mmap) {
+    char *msg = "Memory Address [0x";
     while(*msg) {
         *video++ = *msg++;
         *video++ = 0x07;
     }
     char buffer[10];
-    itoa16(mmap->base_addr_high, buffer);
+    itoa16(mmap->base_addr, buffer);
     char *num = buffer;
     while(*num) {
         *video++ = *num++;
         *video++ = 0x07;
     }
-    itoa16(mmap->base_addr_low, buffer);
+    char *dash = " - 0x";
+    while(*dash) {
+        *video++ = *dash++;
+        *video++ = 0x07;
+    }
+    itoa16(mmap->base_addr - 1 + mmap->length, buffer);
     num = buffer;
     while(*num) {
         *video++ = *num++;
         *video++ = 0x07;
     }
-    char *msg2 = " - 0x";
-    while(*msg2) {
-        *video++ = *msg2++;
-        *video++ = 0x07;
-    }
-    itoa16(mmap->base_addr_high + mmap->length_high, buffer);
-    num = buffer;
-    while(*num) {
-        *video++ = *num++;
-        *video++ = 0x07;
-    }
-    itoa16(mmap->base_addr_low + mmap->length_low, buffer);
-    num = buffer;
-    while(*num) {
-        *video++ = *num++;
-        *video++ = 0x07;
-    }
-    char *msg3 = "] status: ";
-    while(*msg3) {
-        *video++ = *msg3++;
+    char *status = "] Status: ";
+    while(*status) {
+        *video++ = *status++;
         *video++ = 0x07;
     }
     itoa(mmap->type, buffer);
     num = buffer;
-    while(*num) {
-        *video++ = *num++;
-        *video++ = 0x07;
-    }
-    while(((unsigned int)video - 0xB8000) % 160 != 0) {
+    *video++ = *num++;
+    *video++ = 0x07;
+    while(((unsigned int)video - 0xB8000) % 160) {
         *video++ = ' ';
         *video++ = 0x07;
     }
@@ -140,11 +123,12 @@ void c_handle_boot(multiboot_info_t* mb_info) {
         unsigned int total_mem_kb = mb_info->mem_upper + 1024;
         print_memory_size(total_mem_kb / 1024);
         if (mb_info->flags & (1 << 6)) {
-            multiboot_memory_map_t *mmap;
-            for (mmap = (multiboot_memory_map_t *) mb_info->mmap_addr;
-                (unsigned int) mmap < mb_info->mmap_addr + mb_info->mmap_length;
-                mmap = (multiboot_memory_map_t *) ((unsigned int) mmap + mmap->size + sizeof(mmap->size))) {
+            multiboot_mmap_entry_t *mmap;
+            unsigned int address = mb_info->mmap_addr;
+            while(address < mb_info->mmap_addr + mb_info->mmap_length) {
+                mmap = (multiboot_mmap_entry_t *)address;
                 print_memory_map_entry(mmap);
+                address += mmap->size + sizeof(mmap->size);
             }
         }
     } else {
