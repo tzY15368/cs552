@@ -134,6 +134,17 @@ void append_range_with_padded_addr(unsigned long val){
 void cmain(multiboot_info_t *mbi , unsigned int magic) {
     // custom_sleep(1);
     append_str("MemOS: Welcome *** System Memory is:\0");
+    
+    append_range("Memory Map:\n\r\0");
+    clear_addr_buffer();
+    itoa(mbi->mem_upper, addr_buffer, 10);
+    append_range(addr_buffer);
+
+    append_range(" KB UPPER*** \n\r\0");
+    clear_addr_buffer();
+    itoa(mbi->mem_lower, addr_buffer, 10);
+    append_range(addr_buffer);
+
 	unsigned long total_len = 0;
         /* Make sure the magic number matches for memory mapping*/
     if(magic != MULTIBOOT_BOOTLOADER_MAGIC) {
@@ -145,7 +156,7 @@ void cmain(multiboot_info_t *mbi , unsigned int magic) {
         panic("invalid memory map given by GRUB bootloader");
     }
     int i;
-    for(i = 0; i < mbi->mmap_length; 
+    for(i = 0; i < mbi->mmap_length-(sizeof(multiboot_memory_map_t)); 
         i += sizeof(multiboot_memory_map_t)) 
     {
         multiboot_memory_map_t* mmmt = 
@@ -157,7 +168,7 @@ void cmain(multiboot_info_t *mbi , unsigned int magic) {
 
         append_range(" : ");
 
-        append_range_with_padded_addr(mmmt->addr + mmmt->len);
+        append_range_with_padded_addr(mmmt->addr - 1 + mmmt->len);
 
         append_range("] status: ");
         clear_addr_buffer();
