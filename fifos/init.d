@@ -1,1 +1,1 @@
-init.o: init.c multiboot.h elf.h types.h
+init.o: init.c utils.h multiboot.h elf.h types.h thread.h
