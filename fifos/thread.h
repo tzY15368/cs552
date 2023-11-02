@@ -39,18 +39,14 @@ typedef struct ready_queue{
 thread_pool_t* thread_pool_init(thread_pool_t* pool){
     pool->size = N_THREADS;
     pool->idle_cnt = N_THREADS;
-    terminal_writestring("thread_pool_init: ");
+    terminal_writeln("thread_pool_init: ");
     for(size_t i = 0; i < N_THREADS; i++){
         thread_ctl_blk_t tcb;
         tcb.id = i;
         tcb.func = NULL;
         tcb.state = IDLE;
         pool->threads[i] = tcb;
-        terminal_writestring("thread id: ");
-        char buf[10];
-        itoa(buf, 'd', i);
-        terminal_writestring(buf);
-        terminal_writestring("\n");
+        tprintf("thread id: %d\n", i);
     }
     return pool;
 }

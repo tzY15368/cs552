@@ -8,6 +8,7 @@
         "irq_vectors.h": "c",
         "uaccess.h": "c",
         "irq.h": "c",
-        "multiboot.h": "c"
+        "multiboot.h": "c",
+        "stdarg.h": "c"
     }
 }

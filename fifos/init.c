@@ -22,28 +22,20 @@ void start_sched(){
   thread_create(&thread_pool, &ready_queue, NULL, f1);
   thread_create(&thread_pool, &ready_queue, NULL, f2);
   for(int i=0;i<ready_queue.size;i++){
-    terminal_writestring("||ready queue: ");
-    terminal_writeint(ready_queue.queue[i]->id);
-    terminal_writestring("&&");
-    terminal_writeint(ready_queue.queue[i]->state);
-    terminal_writestring("\n");
+    tprintf("ready queue: id: %d state: %d\n", ready_queue.queue[i]->id, ready_queue.queue[i]->state);
   }
-  terminal_writestring("===============");
   for(int i=0;i<thread_pool.size;i++){
-    terminal_writestring("||thread pool: ");
-    terminal_writeint(thread_pool.threads[i].id);
-    terminal_writestring("&&");
-    terminal_writeint(thread_pool.threads[i].state);
-    terminal_writestring("\n");
+    tprintf("thread pool: id: %d state: %d\n", thread_pool.threads[i].id, thread_pool.threads[i].state);
   }
   sched:
-    terminal_writestring("sched\n");
+    tprintf("sched: loop\n");
     thread_ctl_blk_t* tcb = ready_queue_get(&ready_queue);
     if(tcb == NULL){
+      tprintf("sched: tcb is null\n");
       goto end;
     }
-    terminal_writestring("thread id: ");
-    terminal_writeint(tcb->id);
+
+    tprintf("thread id: %d\n", tcb->id);
 
     tcb->func(tcb);
     if(tcb->state != TERMINATED && tcb->state != READY){
@@ -57,10 +49,10 @@ void start_sched(){
       goto sched;
     }
   error:
-    terminal_writestring("error\n");
+    terminal_writeln("error");
     return;
   end:
-    terminal_writestring("end\n");
+    terminal_writeln("end");
     return;
 }
 
@@ -95,13 +87,11 @@ void init( multiboot* pmb ) {
 
   terminal_initialize();
 
-  terminal_writestring("MemOS: Welcome *** System memory is:123123 ");
-  terminal_writestring(memstr);
-  terminal_writestring("MB");
-  terminal_writestring("\n");
+  tprintf("MemOS: Welcome *** System memory is: %d MB\n", memsz);
 
   thread_pool_init(&thread_pool);
   ready_queue_init(&ready_queue);
+  tprintf("thread pool size: %d %d %d\n", thread_pool.size, 1, 2);
   start_sched();
 }
 

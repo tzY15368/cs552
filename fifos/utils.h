@@ -1,7 +1,8 @@
 #include "multiboot.h"
 #include "types.h"
-
+#include <stdarg.h>
 #define N_THREADS 2
+
 
 /* Hardware text mode color constants. */
 enum vga_color
@@ -134,6 +135,13 @@ void terminal_putchar(char c)
 	  terminal_row = 0;
 	}
     }
+  if(c == '\n'){
+    terminal_column = 0;
+    terminal_row++;
+  }
+  if(c == '\r'){
+    terminal_column = 0;
+  }
 }
  
 void terminal_writestring(const char* data)
@@ -143,6 +151,12 @@ void terminal_writestring(const char* data)
     terminal_putchar(data[i]);
 }
 
+void terminal_writeln(const char* data)
+{
+  terminal_writestring(data);
+  terminal_putchar('\n');
+}
+
 void terminal_writeint(int data)
 {
   char buf[10];
@@ -150,3 +164,38 @@ void terminal_writeint(int data)
   terminal_writestring(buf);
 }
  
+void tprintf(const char* fmt, ...) {
+    const char* p = fmt;
+    char c;
+
+    va_list args;
+    char buf[12];  // Maximum int length
+
+    va_start(args, fmt);
+
+    while ((c = *p++)) {
+        if (c != '%') {
+            terminal_putchar(c);
+        } else {
+            c = *p++;
+            switch (c) {
+                case 'c':
+                    terminal_putchar(va_arg(args, int));
+                    break;
+                case 's':
+                    terminal_writestring(va_arg(args, const char*));
+                    break;
+                case 'd':
+                    itoa(buf, 'd', va_arg(args, int));
+                    terminal_writestring(buf);
+                    break;
+                default:
+                    terminal_putchar('%');
+                    terminal_putchar(c);
+                    break;
+            }
+        }
+    }
+
+    va_end(args);
+}
