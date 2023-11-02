@@ -17,7 +17,7 @@ enum thread_state {
 // such as the stack and instruction pointers (possibly others too), and a thread ID (TID).
 typedef struct thread_ctl_blk {
     size_t id;
-    void* func;
+    void* (*func)(void*);
     enum thread_state state;
 } thread_ctl_blk_t;
 
@@ -29,6 +29,9 @@ typedef struct thread_pool{
 
 typedef struct ready_queue{
     size_t size;
+    thread_ctl_blk_t* queue[N_THREADS];
+    int queue_head;
+    int queue_tail;
 } ready_queue_t;
 
 
@@ -36,13 +39,13 @@ typedef struct ready_queue{
 thread_pool_t* thread_pool_init(thread_pool_t* pool){
     pool->size = N_THREADS;
     pool->idle_cnt = N_THREADS;
+    terminal_writestring("thread_pool_init: ");
     for(size_t i = 0; i < N_THREADS; i++){
         thread_ctl_blk_t tcb;
         tcb.id = i;
         tcb.func = NULL;
         tcb.state = IDLE;
         pool->threads[i] = tcb;
-        terminal_writestring("thread_pool_init: ");
         terminal_writestring("thread id: ");
         char buf[10];
         itoa(buf, 'd', i);
@@ -77,14 +80,23 @@ thread_ctl_blk_t* ready_queue_get(ready_queue_t* queue){
     if(queue->size == 0){
         return tcb;
     }
-    // TODO: get tcb from queue
+    queue->size--;
+    tcb = queue->queue[queue->queue_head];
+    queue->queue_head = (queue->queue_head + 1) % N_THREADS;
+    
     return tcb;
 }
 
-void ready_queue_add(ready_queue_t* queue, thread_ctl_blk_t* tcb){
-    queue->size++;
+int ready_queue_add(ready_queue_t* queue, thread_ctl_blk_t* tcb){
+    if(queue->size == N_THREADS){
+        return -1;
+    }
     tcb->state = READY;
-    // TODO: add tcb to queue
+    queue->size++;
+    queue->queue[queue->queue_tail] = tcb;
+    queue->queue_tail = (queue->queue_tail + 1) % N_THREADS;
+
+    return 0;
 }
 
 int thread_create(thread_pool_t* pool, ready_queue_t* queue, void* stack, void* func){
@@ -107,4 +119,10 @@ void thread_yield(thread_ctl_blk_t* tcb, ready_queue_t* queue){
 void thread_terminate(thread_ctl_blk_t* tcb, thread_pool_t* pool){
     // set thread to terminated, add to ready queue
     thread_pool_add_idle(pool, tcb->id);
+}
+
+void ready_queue_init(ready_queue_t* queue){
+    queue->size = 0;
+    queue->queue_head = 0;
+    queue->queue_tail = 0;
 }
