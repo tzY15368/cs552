@@ -1,0 +1,1 @@
+make -B && qemu-system-i386 -kernel memos-2

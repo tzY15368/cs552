@@ -1,5 +1,13 @@
 // #include "multiboot.h"
+#ifndef N_THREADS
+
 #include "utils.h"
+#include "types.h"
+#include "gdt.h"
+
+#endif
+
+
 #include "thread.h"
 // #include "types.h"
 
@@ -38,16 +46,9 @@ void start_sched(){
     tprintf("thread id: %d\n", tcb->id);
 
     tcb->func(tcb);
-    if(tcb->state != TERMINATED && tcb->state != READY){
-      goto error;
-    }
-    if(tcb->state==TERMINATED){
-      thread_pool_add_idle(&thread_pool, tcb->id);
-      goto sched;
-    } else {
-      ready_queue_add(&ready_queue, tcb);
-      goto sched;
-    }
+
+    thread_terminate(tcb, &thread_pool);
+    goto sched;
   error:
     terminal_writeln("error");
     return;
@@ -57,7 +58,7 @@ void start_sched(){
 }
 
 void init( multiboot* pmb ) {
-
+ 
    memory_map_t *mmap;
    unsigned int memsz = 0;		/* Memory size in MB */
    static char memstr[10];
@@ -88,6 +89,10 @@ void init( multiboot* pmb ) {
   terminal_initialize();
 
   tprintf("MemOS: Welcome *** System memory is: %d MB\n", memsz);
+
+  tprintf("================\n");
+
+  init_descriptor_tables();
 
   thread_pool_init(&thread_pool);
   ready_queue_init(&ready_queue);

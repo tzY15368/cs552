@@ -114,6 +114,7 @@ void thread_yield(thread_ctl_blk_t* tcb, ready_queue_t* queue){
 
 void thread_terminate(thread_ctl_blk_t* tcb, thread_pool_t* pool){
     // set thread to terminated, add to ready queue
+    tcb->state = TERMINATED;
     thread_pool_add_idle(pool, tcb->id);
 }
 
