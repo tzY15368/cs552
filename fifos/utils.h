@@ -2,6 +2,19 @@
 #include "types.h"
 #include <stdarg.h>
 #define N_THREADS 2
+#define STACK_SIZE 4096 // 4kb stack
+
+#define print_esp()\
+  unsigned int esp;\
+  __asm__("movl %%esp, %0;" : "=r" (esp));\
+  tprintf("esp: %d\n", esp);\
+
+#define print_eip()\
+  unsigned int eip;\
+  __asm__("call 1f\n1: pop %0" : "=r" (eip));\
+  tprintf("eip: %d\n", eip);\
+
+
 
 
 /* Hardware text mode color constants. */
@@ -198,4 +211,9 @@ void tprintf(const char* fmt, ...) {
     }
 
     va_end(args);
+}
+
+void halt(){
+  tprintf("halt\n");
+  while(1);
 }

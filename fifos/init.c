@@ -11,18 +11,33 @@
 #include "thread.h"
 // #include "types.h"
 
-static thread_pool_t thread_pool;
-static ready_queue_t ready_queue;
 
-void f1(thread_ctl_blk_t* tcb){
-  terminal_writestring("f1\n");
-  tcb->state = TERMINATED;
-
+void f1(){
+  tprintf("f1\n");
+  print_esp();
+  print_eip();
+  tprintf("end of f1\n");
 }
 
-void f2(thread_ctl_blk_t* tcb){
-  terminal_writestring("f2\n");
-  tcb->state = TERMINATED;
+void f2(){
+  tprintf("f2\n");
+  print_esp();
+  print_eip();
+  f1();
+  tprintf("end of f2\n");
+}
+
+void sched(){
+  while(1){
+    tprintf("sched: loop\n");
+    thread_ctl_blk_t* tcb = ready_queue_get(&ready_queue);
+    if(tcb == NULL){
+      tprintf("sched: tcb is null\n");
+      return;
+    }
+    thread_exec(tcb, &sched_tcb);
+    tprintf("sched: after exec: %d", tcb->id);
+  }
 }
 
 void start_sched(){
@@ -35,26 +50,7 @@ void start_sched(){
   for(int i=0;i<thread_pool.size;i++){
     tprintf("thread pool: id: %d state: %d\n", thread_pool.threads[i].id, thread_pool.threads[i].state);
   }
-  sched:
-    tprintf("sched: loop\n");
-    thread_ctl_blk_t* tcb = ready_queue_get(&ready_queue);
-    if(tcb == NULL){
-      tprintf("sched: tcb is null\n");
-      goto end;
-    }
-
-    tprintf("thread id: %d\n", tcb->id);
-
-    tcb->func(tcb);
-
-    thread_terminate(tcb, &thread_pool);
-    goto sched;
-  error:
-    terminal_writeln("error");
-    return;
-  end:
-    terminal_writeln("end");
-    return;
+  sched();
 }
 
 void init( multiboot* pmb ) {
@@ -96,7 +92,8 @@ void init( multiboot* pmb ) {
 
   thread_pool_init(&thread_pool);
   ready_queue_init(&ready_queue);
-  tprintf("thread pool size: %d %d %d\n", thread_pool.size, 1, 2);
+  sched_init(&sched_tcb);
+  tprintf("thread pool size: %d\n", thread_pool.size);
   start_sched();
 }
 
