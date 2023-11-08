@@ -59,7 +59,6 @@ void sched_init(thread_ctl_blk_t* _sched_tcb){
 thread_pool_t* thread_pool_init(thread_pool_t* pool){
     pool->size = N_THREADS;
     pool->idle_cnt = N_THREADS;
-    terminal_writeln("thread_pool_init: ");
     for(size_t i = 0; i < N_THREADS; i++){
         thread_ctl_blk_t tcb;
         tcb.id = i;
@@ -67,7 +66,6 @@ thread_pool_t* thread_pool_init(thread_pool_t* pool){
         tcb.state = IDLE;
         tcb.esp = (uint32_t)tcb.stack;
         pool->threads[i] = tcb;
-        tprintf("thread id: %d\n", i);
     }
     return pool;
 }
@@ -94,6 +92,24 @@ void thread_pool_add_idle(thread_pool_t* pool, size_t tid){
     pool->threads[tid].state = IDLE;
 }
 
+void dump_ready_queue(ready_queue_t* queue){
+    tprintf("dump_ready_queue: size: %d, head: %d, tail: %d\n", queue->size, queue->queue_head, queue->queue_tail);
+    for(int i=0;i<N_THREADS;i++){
+        if(queue->queue[i] == NULL){
+            tprintf("ready queue: idx: %d: NULL\n", i);
+            continue;
+        }
+        tprintf("ready queue: idx: %d @ %d, id: %d state: %d\n", i, queue->queue[i], queue->queue[i]->id, queue->queue[i]->state);
+    }
+}
+
+void dump_thread_pool(thread_pool_t* pool){
+    tprintf("dump_thread_pool: size: %d\n", pool->size);
+    for(int i=0;i<pool->size;i++){
+        tprintf("thread pool: id: %d state: %d\n", pool->threads[i].id, pool->threads[i].state);
+    }
+}
+
 thread_ctl_blk_t* ready_queue_get(ready_queue_t* queue){
     thread_ctl_blk_t* tcb = NULL;
     if(queue->size == 0){
@@ -101,6 +117,7 @@ thread_ctl_blk_t* ready_queue_get(ready_queue_t* queue){
     }
     queue->size--;
     tcb = queue->queue[queue->queue_head];
+    queue->queue[queue->queue_head] = NULL;
     queue->queue_head = (queue->queue_head + 1) % N_THREADS;
     
     return tcb;
@@ -192,7 +209,7 @@ void thread_exec(thread_ctl_blk_t* tcb, thread_ctl_blk_t* sched_tcb){
     unsigned int eeip;\
     __asm__("call 1f\n1: pop %0" : "=r" (eeip));\
     tprintf("before jmp: %d\n", eeip);
-    sched_tcb->eip = eeip+48;                  //42
+    sched_tcb->eip = eeip+49;                  //48
 
     // call thread_func_wrapper -- jmp to current tcb instruction pointer
     __asm__("jmp *%0;" : : "r" (tcb->eip));
@@ -202,6 +219,7 @@ void thread_exec(thread_ctl_blk_t* tcb, thread_ctl_blk_t* sched_tcb){
     // print_eip();
     __asm__("popa");
     tprintf("thread_exec: after jmp\n");
+    // dump_thread_pool(&thread_pool);
     // halt();
 }
 
@@ -216,5 +234,8 @@ void ready_queue_init(ready_queue_t* queue){
     queue->size = 0;
     queue->queue_head = 0;
     queue->queue_tail = 0;
+    for(int i=0;i<N_THREADS;i++){
+        queue->queue[i] = NULL;
+    }
 }
 

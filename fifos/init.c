@@ -29,14 +29,18 @@ void f2(){
 
 void sched(){
   while(1){
-    tprintf("sched: loop\n");
+    tprintf("--------------- sched: loop ----------------\n");
+    tprintf("readyqueue addr: %d\n", &ready_queue);
+    dump_ready_queue(&ready_queue);
     thread_ctl_blk_t* tcb = ready_queue_get(&ready_queue);
+    // dump_ready_queue(&ready_queue);
     if(tcb == NULL){
       tprintf("sched: tcb is null\n");
       return;
     }
     thread_exec(tcb, &sched_tcb);
-    tprintf("sched: after exec: %d", tcb->id);
+    tprintf("sched: after exec: %d\n", tcb->id);
+    dump_thread_pool(&thread_pool);
   }
 }
 
@@ -44,12 +48,8 @@ void start_sched(){
   // TODO: Prepare ready queue and stack
   thread_create(&thread_pool, &ready_queue, NULL, f1);
   thread_create(&thread_pool, &ready_queue, NULL, f2);
-  for(int i=0;i<ready_queue.size;i++){
-    tprintf("ready queue: id: %d state: %d\n", ready_queue.queue[i]->id, ready_queue.queue[i]->state);
-  }
-  for(int i=0;i<thread_pool.size;i++){
-    tprintf("thread pool: id: %d state: %d\n", thread_pool.threads[i].id, thread_pool.threads[i].state);
-  }
+  // dump_ready_queue(&ready_queue);
+  // dump_thread_pool(&thread_pool);
   sched();
 }
 
@@ -83,10 +83,6 @@ void init( multiboot* pmb ) {
   itoa(memstr, 'd', memsz);
 
   terminal_initialize();
-
-  tprintf("MemOS: Welcome *** System memory is: %d MB\n", memsz);
-
-  tprintf("================\n");
 
   init_descriptor_tables();
 

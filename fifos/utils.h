@@ -176,8 +176,13 @@ void terminal_writeint(int data)
   itoa(buf, 'd', data);
   terminal_writestring(buf);
 }
- 
+
+static bool debug = TRUE;
+
 void tprintf(const char* fmt, ...) {
+    if(!debug){
+      return;
+    }
     const char* p = fmt;
     char c;
 
