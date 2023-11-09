@@ -63,7 +63,7 @@ typedef struct thread_ctl_blk {
     size_t tp_idx;
     size_t id;
     enum thread_state state;
-    char stack[STACK_SIZE];
+    uint32_t stack[STACK_SIZE];
     uint32_t bp;
     uint32_t esp;
     uint32_t func;

@@ -17,8 +17,7 @@ thread_pool_t* thread_pool_init(){
     pool->idle_cnt = N_THREADS;
     pool->next_tid = 0;
     for(size_t i = 0; i < N_THREADS; i++){
-        thread_ctl_blk_t tcb;
-        pool->threads[i] = tcb;
+        pool->threads[i].state = IDLE;
         pool->threads[i].tp_idx = i;
 
         // clear the stack
@@ -35,7 +34,7 @@ thread_ctl_blk_t* thread_pool_get_idle(){
     if(pool->idle_cnt == 0){
         return NULL;
     }
-    for(size_t i = 0; i < pool->size; i++){
+    for(size_t i = 0; i < N_THREADS; i++){
         if(pool->threads[i].state == IDLE){
             pool->idle_cnt--;
             tcb = &pool->threads[i];
@@ -74,8 +73,8 @@ void thread_pool_add_idle(thread_ctl_blk_t* tcb){
 void dump_thread_pool(){
     
     thread_pool_t* pool = &thread_pool;
-    tprintf("dump_thread_pool: size: %d\n", pool->size);
-    for(int i=0;i<pool->size;i++){
-        tprintf("thread pool: id: %d state: %d\n", pool->threads[i].id, pool->threads[i].state);
+    tprintf("dump_thread_pool @ %d: size: %d\n", pool, pool->size);
+    for(int i=0;i<N_THREADS;i++){
+        tprintf("thread pool: tid: %d state: %d\n", pool->threads[i].id, pool->threads[i].state);
     }
 }

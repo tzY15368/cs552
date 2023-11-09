@@ -23,6 +23,9 @@
 #include "readyqueue.h"
 #endif
 
+#ifndef SCHED_H
+#include "sched.h"
+#endif
 
 void f1(){
   tprintf("f1\n");
@@ -38,8 +41,6 @@ void f2(){
   f1();
   tprintf("end of f2\n");
 }
-
-
 
 void init( multiboot* pmb ) {
  
@@ -71,7 +72,6 @@ void init( multiboot* pmb ) {
   itoa(memstr, 'd', memsz);
 
   terminal_initialize();
-
   init_descriptor_tables();
 
   thread_pool_init();
@@ -79,7 +79,6 @@ void init( multiboot* pmb ) {
   sched_init();
 
   tprintf("thread pool size: %d\n", thread_pool.size);
-  
   thread_create(f1);
   thread_create(f2);
 
