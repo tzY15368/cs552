@@ -9,6 +9,8 @@
         "uaccess.h": "c",
         "irq.h": "c",
         "multiboot.h": "c",
-        "stdarg.h": "c"
+        "stdarg.h": "c",
+        "utils.h": "c",
+        "threadpool.h": "c"
     }
 }
