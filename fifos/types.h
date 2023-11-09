@@ -1,3 +1,9 @@
+#define TYPES_H 1
+
+
+#define STACK_SIZE 4096 // 4kb stack
+#define N_THREADS 2
+
 #define FALSE 0
 #define TRUE 1
 
@@ -29,3 +35,52 @@ typedef uint16 uint16_t;
 typedef uint32 uint32_t;
 typedef uint64 uint64_t;
 #endif
+
+typedef struct context{
+	uint16_t ds;
+	uint16_t es;
+	uint16_t fs;
+	uint16_t gs;
+//	uint32_t flags;
+	uint32_t edi;
+	uint32_t esi;
+	uint32_t ebx;
+	uint32_t ebp;
+	uint32_t eip;
+} context_t;
+
+enum thread_state {
+    IDLE,
+    READY,
+    RUNNING,
+    WAITING,
+    TERMINATED
+};
+
+// Example state information includes copies of machine register values
+// such as the stack and instruction pointers (possibly others too), and a thread ID (TID).
+typedef struct thread_ctl_blk {
+    size_t tp_idx;
+    size_t id;
+    enum thread_state state;
+    char stack[STACK_SIZE];
+    uint32_t bp;
+    uint32_t esp;
+    uint32_t func;
+    context_t* ctx;
+
+} thread_ctl_blk_t;
+
+typedef struct thread_pool{
+    size_t size;
+    size_t idle_cnt;
+    thread_ctl_blk_t threads[N_THREADS];
+    int next_tid;
+} thread_pool_t;
+
+typedef struct ready_queue{
+    size_t size;
+    thread_ctl_blk_t* queue[N_THREADS];
+    int queue_head;
+    int queue_tail;
+} ready_queue_t;

@@ -1,15 +1,19 @@
 // #include "multiboot.h"
-#ifndef N_THREADS
-
-#include "utils.h"
+#ifndef TYPES_H
 #include "types.h"
-#include "gdt.h"
-
 #endif
 
+#ifndef UTILS_H
+#include "utils.h"
+#endif
 
+#ifndef GDT_H
+#include "gdt.h"
+#endif
+
+#ifndef THREAD_H
 #include "thread.h"
-// #include "types.h"
+#endif
 
 
 void f1(){

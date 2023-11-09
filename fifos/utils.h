@@ -1,8 +1,14 @@
+#define UTILS_H 1
+
 #include "multiboot.h"
+
+#ifndef TYPES_H
 #include "types.h"
+#endif
+
 #include <stdarg.h>
-#define N_THREADS 2
-#define STACK_SIZE 4096 // 4kb stack
+
+
 
 #define print_esp()\
   unsigned int esp;\

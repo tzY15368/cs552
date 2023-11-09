@@ -1,8 +1,11 @@
-#ifndef N_THREADS
+#define GDT_H 1
 
-#include "utils.h"
+#ifndef TYPES_H
 #include "types.h"
+#endif
 
+#ifndef UTILS_H
+#include "utils.h"
 #endif
 
 #define N_GDT_ENTRIES 3
