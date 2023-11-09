@@ -52,3 +52,14 @@ int ready_queue_add( thread_ctl_blk_t* tcb){
 
     return 0;
 }
+
+
+void ready_queue_init(){
+    ready_queue_t* queue = &ready_queue;
+    queue->size = 0;
+    queue->queue_head = 0;
+    queue->queue_tail = 0;
+    for(int i=0;i<N_THREADS;i++){
+        queue->queue[i] = NULL;
+    }
+}

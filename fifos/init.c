@@ -15,6 +15,14 @@
 #include "thread.h"
 #endif
 
+#ifndef THREADPOOL_H
+#include "threadpool.h"
+#endif
+
+#ifndef READYQUEUE_H
+#include "readyqueue.h"
+#endif
+
 
 void f1(){
   tprintf("f1\n");
@@ -31,31 +39,7 @@ void f2(){
   tprintf("end of f2\n");
 }
 
-void sched(){
-  while(1){
-    tprintf("--------------- sched: loop ----------------\n");
-    tprintf("readyqueue addr: %d\n", &ready_queue);
-    dump_ready_queue(&ready_queue);
-    thread_ctl_blk_t* tcb = ready_queue_get(&ready_queue);
-    // dump_ready_queue(&ready_queue);
-    if(tcb == NULL){
-      tprintf("sched: tcb is null\n");
-      return;
-    }
-    thread_exec(tcb, &sched_tcb);
-    tprintf("sched: after exec: %d\n", tcb->id);
-    dump_thread_pool(&thread_pool);
-  }
-}
 
-void start_sched(){
-  // TODO: Prepare ready queue and stack
-  thread_create(&thread_pool, &ready_queue, NULL, f1);
-  thread_create(&thread_pool, &ready_queue, NULL, f2);
-  // dump_ready_queue(&ready_queue);
-  // dump_thread_pool(&thread_pool);
-  sched();
-}
 
 void init( multiboot* pmb ) {
  
@@ -90,10 +74,16 @@ void init( multiboot* pmb ) {
 
   init_descriptor_tables();
 
-  thread_pool_init(&thread_pool);
-  ready_queue_init(&ready_queue);
-  sched_init(&sched_tcb);
+  thread_pool_init();
+  ready_queue_init();
+  sched_init();
+
   tprintf("thread pool size: %d\n", thread_pool.size);
+  
+  thread_create(f1);
+  thread_create(f2);
+
+
   start_sched();
 }
 
