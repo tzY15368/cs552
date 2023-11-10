@@ -24,9 +24,12 @@ void sched_init(){
     
 }
 
+extern void ctx_switch(context_t *ctx_old, context_t *ctx_new);
+
+static uint32_t dummy_stack[STACK_SIZE];
+
 void sched(){
     tprintf("--------------- sched: loop ----------------\n");
-    tprintf("readyqueue addr: %d\n", &ready_queue);
     // dump_ready_queue(&ready_queue);
     thread_ctl_blk_t* tcb = ready_queue_get(&ready_queue);
     // dump_ready_queue(&ready_queue);
@@ -34,8 +37,19 @@ void sched(){
       tprintf("sched: tcb is null\n");
       halt();
     }
+    // tcb->state = RUNNING;
+    if(tcb->id==0){
+		  context_t *dummy = (context_t *) (&dummy_stack[STACK_SIZE-1] - sizeof(context_t*));
+      ctx_switch(dummy, tcb->ctx);
+    } else {
+      thread_ctl_blk_t* prev_tcb = get_current_tcb();
+      // prev_tcb->state = READY;
+      ctx_switch(prev_tcb->ctx, tcb->ctx);
+    }
+
     tprintf("sched: after exec: %d\n", tcb->id);
-    dump_thread_pool(&thread_pool);
+    return;
+    // dump_thread_pool(&thread_pool);
 }
 
 void start_sched(){

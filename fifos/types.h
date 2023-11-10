@@ -67,7 +67,7 @@ typedef struct thread_ctl_blk {
     uint32_t bp;
     uint32_t esp;
     uint32_t func;
-    context_t* ctx;
+    context_t* ctx; // points to the context on the stack, not an actual context
 
 } thread_ctl_blk_t;
 

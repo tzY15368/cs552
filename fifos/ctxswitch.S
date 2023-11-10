@@ -8,8 +8,8 @@
 # a struct context, and save its address in *old.
 # Switch stacks to new and pop previously-saved registers.
 
-.globl swtch
-swtch:
+.globl ctx_switch
+ctx_switch:
   movl 4(%esp), %eax
   movl 8(%esp), %edx
 

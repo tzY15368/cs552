@@ -16,6 +16,9 @@
 #include "readyqueue.h"
 #endif
 
+#ifndef SCHED_H
+#include "sched.h"
+#endif
 
 
 // void thread_terminate(thread_ctl_blk_t* tcb, thread_pool_t* pool){
@@ -45,10 +48,19 @@ eip, cs, css, ds, fs, gs, eax, ...
 //     // __asm__("jmp *%0;" : : "r" (sched_tcb.eip));
 // }
 
+void thread_yield(){
+    
+}
+
 void thread_exit(){
     thread_ctl_blk_t* tcb = get_current_tcb();
+    if(tcb==NULL){
+        tprintf("thread_exit: tcb is null\n");
+        halt();
+    }
     tcb->state = TERMINATED;
     tprintf("thread exit: tid=%d\n", tcb->id);
+    sched();
 }
 
 int thread_create(void* func){
@@ -66,21 +78,20 @@ int thread_create(void* func){
     tcb->func = (uint32_t) func;
 
     /* Create a fake initial context for the process  */
-    // uint32_t stack = (uint32_t) stack_ptr - sizeof(context_t);
-    // tcb->ctx = (context_t*) stack;
-    // tcb->ctx->ds = 0x10;
-    // tcb->ctx->es = 0x10;
-    // tcb->ctx->fs = 0x10;
-    // tcb->ctx->gs = 0x10;
+    uint32_t stack = (uint32_t) stack_ptr - sizeof(context_t);
+    tcb->ctx = (context_t*) stack;
+    tcb->ctx->ds = 0x10;
+    tcb->ctx->es = 0x10;
+    tcb->ctx->fs = 0x10;
+    tcb->ctx->gs = 0x10;
 
-    // tcb->ctx->eip = (uint32_t) func;
-    // tcb->ctx->ebp = tcb->bp;
-    // tcb->ctx->ebx = 0;
+    tcb->ctx->eip = (uint32_t) func;
+    tcb->ctx->ebp = tcb->bp;
+    tcb->ctx->ebx = 0;
+    tcb->ctx->esi = 0;
+    tcb->ctx->edi = 0;
 
-    // tcb->ctx->esi = 0;
-    // tcb->ctx->edi = 0;
-
-    // tcb->esp = (uint32_t) (((uint32_t *) stack));
+    tcb->esp = (uint32_t) (((uint32_t *) stack));
 
         // ---------------
 

@@ -29,15 +29,15 @@
 
 void f1(){
   tprintf("f1\n");
-  print_esp();
-  print_eip();
+  // print_esp();
+  // print_eip();
   tprintf("end of f1\n");
 }
 
 void f2(){
   tprintf("f2\n");
-  print_esp();
-  print_eip();
+  // print_esp();
+  // print_eip();
   f1();
   tprintf("end of f2\n");
 }
