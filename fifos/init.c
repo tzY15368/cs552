@@ -38,6 +38,7 @@ void f2(){
   tprintf("f2\n");
   // print_esp();
   // print_eip();
+  thread_yield();
   f1();
   tprintf("end of f2\n");
 }

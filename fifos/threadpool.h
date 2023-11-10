@@ -45,19 +45,7 @@ thread_ctl_blk_t* thread_pool_get_idle(){
     return tcb;
 }
 
-thread_ctl_blk_t* get_current_tcb(){
-    
-    thread_pool_t* pool = &thread_pool;
-    if(pool->idle_cnt == pool->size){
-        return NULL;
-    }
-    for(size_t i = 0; i < pool->size; i++){
-        if(pool->threads[i].state == RUNNING){
-            return &pool->threads[i];
-        }
-    }
-    return NULL;
-}
+
 
 
 void thread_pool_add_idle(thread_ctl_blk_t* tcb){

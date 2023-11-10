@@ -21,43 +21,18 @@
 #endif
 
 
-// void thread_terminate(thread_ctl_blk_t* tcb, thread_pool_t* pool){
-//     // set thread to terminated, add to ready queue
-//     tcb->state = TERMINATED;
-//     thread_pool_add_idle(pool, tcb->id);
-//     tprintf("thread_terminate: tcb id: %d\n", tcb->id);
-// }
-
-/*
-eip, cs, css, ds, fs, gs, eax, ...
-
-*/
-
-
-// void thread_func_wrapper(thread_ctl_blk_t* tcb){
-//     tprintf("thread_func_wrapper: tcb id: %d\n", tcb->id);
-//     tcb->func(NULL);
-//     // jmp back to the scheduler
-//     thread_terminate(tcb, &thread_pool);
-//     tprintf("jumping back: tcb id: %d, %d\n", tcb->id, sched_tcb.eip);
-
-//     // restore stack pointer with tcb->esp
-//     // __asm__("movl %0, %%esp;" : : "r" (sched_tcb.esp));
-//     // halt();
-//     // jmp back to thread exec
-//     // __asm__("jmp *%0;" : : "r" (sched_tcb.eip));
-// }
-
 void thread_yield(){
-    
+    thread_ctl_blk_t* tcb = get_current_tcb(TRUE);
+    tcb->state = READY;
+    ready_queue_add(tcb);
+    tprintf("thread yield: tid=%d\n", tcb->id);
+    // dump_ready_queue();
+    // halt();
+    sched();
 }
 
 void thread_exit(){
-    thread_ctl_blk_t* tcb = get_current_tcb();
-    if(tcb==NULL){
-        tprintf("thread_exit: tcb is null\n");
-        halt();
-    }
+    thread_ctl_blk_t* tcb = get_current_tcb(TRUE);
     tcb->state = TERMINATED;
     tprintf("thread exit: tid=%d\n", tcb->id);
     sched();
