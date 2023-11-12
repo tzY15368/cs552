@@ -10,3 +10,4 @@ u
 *.mod.c
 cp
 *.bin
+*.d

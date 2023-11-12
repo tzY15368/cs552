@@ -7,6 +7,10 @@
         "interrupt.h": "c",
         "irq_vectors.h": "c",
         "uaccess.h": "c",
-        "irq.h": "c"
+        "irq.h": "c",
+        "multiboot.h": "c",
+        "stdarg.h": "c",
+        "utils.h": "c",
+        "threadpool.h": "c"
     }
 }
