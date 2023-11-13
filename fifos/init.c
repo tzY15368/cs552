@@ -27,48 +27,40 @@
 #include "sched.h"
 #endif
 
-void f1(){
-  tprintf("f1\n");
+#ifndef IDT_H
+#include "idt.h"
+#endif
+
+void f0(){
+  tprintf("f0\n");
   // print_esp();
   // print_eip();
-  tprintf("end of f1\n");
+  tprintf("end of f0\n");
 }
 
-void f2(){
-  tprintf("f2\n");
-  // print_esp();
-  // print_eip();
+void f1(){
+  tprintf("f1\n");
+  int a = 10 / 0;
   thread_yield();
   f1();
-  tprintf("end of f2\n");
+  tprintf("end of f1\n");
 }
 
 void init( multiboot* pmb ) {
  
-   memory_map_t *mmap;
-   unsigned int memsz = 0;		/* Memory size in MB */
-   static char memstr[10];
+  memory_map_t *mmap;
+  unsigned int memsz = 0;		/* Memory size in MB */
+  static char memstr[10];
 
   for (mmap = (memory_map_t *) pmb->mmap_addr;
-       (unsigned long) mmap < pmb->mmap_addr + pmb->mmap_length;
-       mmap = (memory_map_t *) ((unsigned long) mmap
-				+ mmap->size + 4 /*sizeof (mmap->size)*/)) {
-    
+      (unsigned long) mmap < pmb->mmap_addr + pmb->mmap_length;
+      mmap = (memory_map_t *) ((unsigned long) mmap + mmap->size + 4)) {
     if (mmap->type == 1)	/* Available RAM -- see 'info multiboot' */
       memsz += mmap->length_low;
   }
 
   /* Convert memsz to MBs */
-  memsz = (memsz >> 20) + 1;	/* The + 1 accounts for rounding
-				   errors to the nearest MB that are
-				   in the machine, because some of the
-				   memory is othrwise allocated to
-				   multiboot data structures, the
-				   kernel image, or is reserved (e.g.,
-				   for the BIOS). This guarantees we
-				   see the same memory output as
-				   specified to QEMU.
-				    */
+  memsz = (memsz >> 20) + 1;
 
   itoa(memstr, 'd', memsz);
 
@@ -80,10 +72,9 @@ void init( multiboot* pmb ) {
   sched_init();
 
   tprintf("thread pool size: %d\n", thread_pool.size);
+  idt_init();
+  thread_create(f0);
   thread_create(f1);
-  thread_create(f2);
-
 
   start_sched();
 }
-

@@ -11,6 +11,9 @@
         "multiboot.h": "c",
         "stdarg.h": "c",
         "utils.h": "c",
-        "threadpool.h": "c"
+        "threadpool.h": "c",
+        "types.h": "c",
+        "gdt.h": "c",
+        "thread.h": "c"
     }
 }
