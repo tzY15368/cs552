@@ -30,6 +30,7 @@
 void f1(){
   tprintf("f1\n");
   // print_esp();
+  sleep(2000);
   // print_eip();
   tprintf("end of f1\n");
 }

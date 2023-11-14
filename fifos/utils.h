@@ -21,6 +21,15 @@
   tprintf("eip: %d\n", eip);\
 
 
+void sleep(int ms){
+  // just consume cpu cycles
+  int v = 0;
+  for(int i=0; i<ms*100000; i++){
+    v += i;
+  };
+}
+
+
 
 
 /* Hardware text mode color constants. */
