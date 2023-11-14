@@ -11,4 +11,4 @@ u
 cp
 *.bin
 *.d
-/.vscode/
+/.vscode
