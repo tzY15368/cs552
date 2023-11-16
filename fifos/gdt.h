@@ -70,4 +70,3 @@ static void init_descriptor_tables()
    // Initialise the global descriptor table.
    init_gdt();
 }
-

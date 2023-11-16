@@ -40,7 +40,9 @@ void f0(){
 
 void f1(){
   tprintf("f1\n");
-  int a = 10 / 0;
+  int a = 2-2;
+  int b = 2/a;
+  a = b;
   thread_yield();
   f1();
   tprintf("end of f1\n");
@@ -66,13 +68,13 @@ void init( multiboot* pmb ) {
 
   terminal_initialize();
   init_descriptor_tables();
+  idt_init();
 
   thread_pool_init();
   ready_queue_init();
   sched_init();
 
   tprintf("thread pool size: %d\n", thread_pool.size);
-  idt_init();
   thread_create(f0);
   thread_create(f1);
 

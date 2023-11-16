@@ -35,16 +35,18 @@ void idt_set_gate(
     idt[interrupt_number].offset_high = offset >> 16;
 }
 
-void exception_handler(void) {
-    tprintf("Exception!");
+__attribute__ ((interrupt)) void exception_handler(unsigned long long interrupt_number, unsigned long long error_code) {
+    terminal_writestring("Exception!\n");
+    __asm__ volatile ("iret");
 }
 
 void idt_init() {
+    __asm__ volatile ("cli");
     idtr.limit = sizeof(idt) - 1;
     idtr.base = (unsigned long long)idt;
-    // Set all interrupt gates to point to a default exception handler.
     for(int i = 0; i < 256; i++) {
         idt_set_gate(i, (unsigned long long)exception_handler, 0x08, 0x8E);
     }
     __asm__ volatile ("lidt %0" : : "m" (idtr));
+    __asm__ volatile ("sti");
 }
