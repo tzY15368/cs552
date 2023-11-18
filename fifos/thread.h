@@ -35,6 +35,9 @@ void thread_exit(){
     thread_ctl_blk_t* tcb = get_current_tcb(TRUE);
     tcb->state = TERMINATED;
     tprintf("thread exit: tid=%d\n", tcb->id);
+    // dump_ready_queue();
+
+    // halt();
     sched();
 }
 
@@ -49,7 +52,7 @@ int thread_create(void* func){
 
     *(((uint32_t*) stack_ptr) - 0) = (uint32_t) thread_exit;
 
-    // tcb->bp = (uint32_t) stack_ptr - 1;
+    tcb->bp = (uint32_t) stack_ptr - 1;
     tcb->func = (uint32_t) func;
 
     /* Create a fake initial context for the process  */
@@ -91,52 +94,4 @@ int thread_create(void* func){
     ready_queue_add(tcb);
     return 0;
 }
-
-// void thread_exec(thread_ctl_blk_t* tcb, thread_ctl_blk_t* sched_tcb){
-//     // setup execution env: stack, instruction pointer
-//     // set stack pointer
-//     // pusha
-//     tprintf("thread_exec: tcb id: %d\n", tcb->id);
-//     print_esp();
-//     // set thread to running
-//     tcb->state = RUNNING;
-//     // back up the stack pointer
-//     // halt();
-    
-//     // set eax to 123 for testing
-//     __asm__("movl $123, %eax");
-
-//     __asm__("pusha");
-//     __asm__("movl %0, %%esp;" : : "r" (tcb->esp));
-//     // sched_tcb->esp = cur_esp;
-//     unsigned int eeip;\
-//     __asm__("call 1f\n1: pop %0" : "=r" (eeip));\
-//      tprintf("before jmp: %d\n", eeip);
-//     sched_tcb->eip = eeip+17;                  //48
-
-//     // call thread_func_wrapper -- jmp to current tcb instruction pointer
-//     __asm__("jmp *%0;" : : "r" (tcb->eip));
-//     // no-op as placeholder
-//     // __asm__("nop");
-    
-//     // print_eip();
-//     // tprintf("before pop\n");
-//     __asm__("popa");
-
-//     // load eax and see if its 123
-//     unsigned int eax;
-//     __asm__("movl %%eax, %0" : "=r" (eax));
-
-//     tprintf("thread_exec: after jmp %d\n", eax);
-//     // dump_thread_pool(&thread_pool);
-//     // halt();
-// }
-
-// void thread_yield(thread_ctl_blk_t* tcb, ready_queue_t* queue){
-//      // set thread to ready, add to ready queue
-//     tcb->state = READY;
-//     ready_queue_add(queue, tcb);
-// }
-
-
 

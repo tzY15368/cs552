@@ -19,4 +19,7 @@ install: $(PROGS)
 clean:
 	-rm *.o *.d $(PROGS) *~
 
+boot:
+	qemu-system-i386 -no-reboot -no-shutdown -kernel memos-2
+
 -include *.d
