@@ -22,4 +22,7 @@ clean:
 boot:
 	qemu-system-i386 -no-reboot -no-shutdown -kernel memos-2
 
+dbg:
+	qemu-system-i386 -S -s -no-reboot -no-shutdown -kernel memos-2
+
 -include *.d

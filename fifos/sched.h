@@ -24,7 +24,7 @@ void sched_init(){
     
 }
 
-extern void ctx_switch(context_t *ctx_old, context_t *ctx_new);
+extern void ctx_switch(context_t* *ctx_old, context_t *ctx_new);
 
 // static uint32_t dummy_stack[STACK_SIZE];
 static thread_ctl_blk_t dummy_tcb;
@@ -55,7 +55,7 @@ static int SCHED_CNT = 0;
 
 void sched(){
   SCHED_CNT += 1;
-    tprintf("<-->sched: %d<-->", SCHED_CNT);
+    // tprintf("<-->sched: %d<-->", SCHED_CNT);
     // dump_ready_queue(&ready_queue);
     thread_ctl_blk_t* tcb = ready_queue_get(&ready_queue);
     // dump_ready_queue(&ready_queue);
@@ -63,36 +63,27 @@ void sched(){
       tprintf("sched: tcb is null\n");
       halt();
     }
-    tprintf("sched: before exec: %d\n", tcb->id);
+    tprintf("[%d]: sched: before exec: %d\n", SCHED_CNT, tcb->id);
     thread_ctl_blk_t* prev_tcb = get_current_tcb(FALSE);
 
     tcb->state = RUNNING;
     set_current_tcb(tcb);
 
     if(prev_tcb == NULL){
-		  // context_t *dummy = (context_t *) (&dummy_stack[STACK_SIZE-1] - sizeof(context_t*));
-      // ctx_switch(dummy, tcb->ctx);
-      ctx_switch(dummy_tcb.ctx, tcb->ctx);
+
+      // tprintf("[%d]: %d -> %d (PREV=NULL)\n", SCHED_CNT, dummy_tcb.id, tcb->id);
+      ctx_switch(&dummy_tcb.ctx, tcb->ctx);
+
     } else {
       // dump_thread_pool();
-      tprintf("prev tcb: %d state %d\n", prev_tcb->id, prev_tcb->state);
+      // tprintf("prev tcb: %d state %d\n", prev_tcb->id, prev_tcb->state);
       if(prev_tcb->state != TERMINATED){
         prev_tcb->state = READY;
       }
-      // halt();
-      if(SCHED_CNT==4){
-        halt();
-      }
+      
       if(prev_tcb!=tcb){
-        if(prev_tcb->state != TERMINATED){
-          tprintf("cnt no terminate prev: %d\n", SCHED_CNT);
-          ctx_switch(prev_tcb->ctx, tcb->ctx);
-        } else {		  
-          tprintf("cnt terminate prev: %d\n", SCHED_CNT);
-          // context_t *dummy = (context_t *) (&dummy_stack[STACK_SIZE-1] - sizeof(context_t*));
-          ctx_switch(dummy_tcb.ctx, tcb->ctx);
-          
-        }
+        // tprintf("[%d]: %d -> %d\n", SCHED_CNT, prev_tcb->id, tcb->id);
+        ctx_switch(&prev_tcb->ctx, tcb->ctx);
       }
     }
 

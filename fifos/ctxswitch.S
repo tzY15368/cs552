@@ -4,6 +4,14 @@
 #
 #   void swtch(uint32_t **old_stack, unit32_t *new_stack);
 # 
+
+By passing a pointer to a pointer (context_t* *ctx_old), 
+the function can update the value of the pointer to the old context,
+ effectively changing where it points. This allows the function 
+ to switch between two contexts and update the calling code with 
+ the new context.
+
+
 # Save the current registers on the stack, creating
 # a struct context, and save its address in *old.
 # Switch stacks to new and pop previously-saved registers.

@@ -43,10 +43,10 @@ void f2(){
   tprintf("f2\n");
   // print_esp();
   // print_eip();
-  // for(int i=1;i<11;i+=2){
-  //   tprintf("<2-%d>", i);
-  //   thread_yield();
-  // }
+  for(int i=1;i<11;i+=2){
+    tprintf("<2-%d>", i);
+    thread_yield();
+  }
   // thread_yield();
   // f1();
   tprintf("end of f2\n");
