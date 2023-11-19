@@ -70,17 +70,72 @@ void PIC_remap(int offset1, int offset2)
 	outb(PIC2_DATA, a2);
 }
 
+void IRQ_set_mask(unsigned char IRQline) {
+    uint16_t port;
+    uint8_t value;
+
+    if(IRQline < 8) {
+        port = PIC1_DATA;
+    } else {
+        port = PIC2_DATA;
+        IRQline -= 8;
+    }
+    value = inb(port) | (1 << IRQline);
+    outb(port, value);
+}
+
+void IRQ_clear_mask(unsigned char IRQline) {
+    uint16_t port;
+    uint8_t value;
+
+    if(IRQline < 8) {
+        port = PIC1_DATA;
+    } else {
+        port = PIC2_DATA;
+        IRQline -= 8;
+    }
+    value = inb(port) & ~(1 << IRQline);
+    outb(port, value);
+}
+
 void init_pit()
 {
-  outb(0x34, 0x43); //00 11 010 0 to command port 0x43
+	IRQ_clear_mask(0);
+	__asm__ volatile("cli");
+  	outb(0x34, 0x43); //00 11 010 0 to command port 0x43
 
-  outb((PIT_FREQ / 100000000000) & 0xFF, 0x40); //counter 0 low byte written to channel 0 data port 0x40
-  outb((PIT_FREQ / 100000000000) >> 8, 0x40); //counter 0 high byte
+	//time in ms = reload_value / 1193181 * 1000
+	// reload val = time in ms * 1193181 / 1000
+
+	// 100000000000
+  	outb((PIT_FREQ ) & 0xFF, 0x40); //counter 0 low byte written to channel 0 data port 0x40
+  	outb((PIT_FREQ ) >> 8, 0x40); //counter 0 high byte
+    __asm__ volatile("sti");
 	tprintf("init pit\n");
 }
 
-void PIC_sendEOI()
+unsigned read_pit_count() {
+	unsigned count = 0;
+ 
+	// Disable interrupts
+	// cli();
+	__asm__ volatile("cli");
+ 
+	// al = channel in bits 6 and 7, remaining bits clear
+	outb(0x43,0b0000000);
+ 
+	count = inb(0x40);		// Low byte
+	count |= inb(0x40)<<8;		// High byte
+ 
+    __asm__ volatile("sti");
+	return count;
+}
+
+void PIC_sendEOI(unsigned char irq)
 {
+	if(irq >= 8)
+		outb(PIC2_COMMAND,PIC_EOI);
+ 
 	outb(PIC1_COMMAND,PIC_EOI);
 }
 
@@ -91,5 +146,4 @@ void pic_init(){
 
     __asm__ volatile("sti");
 	tprintf("init pic -- ");
-    init_pit();
 }

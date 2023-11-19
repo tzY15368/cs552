@@ -12,19 +12,30 @@
 #include "pic.h"
 #endif
 
+#ifndef THREAD_H
+#include "thread.h"
+#endif
+
 #define IDT_MAX_DESCRIPTORS 256
 
 extern void* isr_wrapper();
+extern void* timer_wrapper();
+
 void interrupt_handler() {
     tprintf(".");
-    // __asm__ volatile ("cli; hlt"); // Completely hangs the computer
-    PIC_sendEOI();
+    PIC_sendEOI(0);
 }
 
 void timer_handler(){
-    tprintf("Timer handler called\n");
-    // __asm__ volatile ("cli; hlt"); // Completely hangs the computer
-    PIC_sendEOI();
+    // tprintf("[%d]", read_pit_count());
+    
+    PIC_sendEOI(0);
+    // IRQ_set_mask(0);
+    tprintf("`");
+    thread_ctl_blk_t* tcb = get_current_tcb(FALSE);
+    if(tcb != NULL){
+        thread_preempt();
+    }
 }
 
 __attribute__((aligned(0x10))) 
@@ -56,7 +67,8 @@ void idt_init() {
     for(int i=0;i<48;i++){
         isr_stub_table[i] = isr_wrapper;
     }
-    isr_stub_table[0x20] = timer_handler;
+    // For example, IRQ 0 is typically associated with interrupt vector 32.
+    isr_stub_table[0x20] = timer_wrapper;
 
     for (uint8_t vector = 0; vector < 48; vector++) {
         idt_set_descriptor(vector, isr_stub_table[vector], 0x8E);

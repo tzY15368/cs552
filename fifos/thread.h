@@ -26,13 +26,13 @@
 
 
 void thread_yield(){
-    thread_ctl_blk_t* tcb = get_current_tcb(TRUE);
-    tcb->state = READY;
-    ready_queue_add(tcb);
-    tprintf("thread yield: tid=%d\n", tcb->id);
-    // dump_ready_queue();
-    // halt();
-    sched();
+    // thread_ctl_blk_t* tcb = get_current_tcb(TRUE);
+    // tcb->state = READY;
+    // ready_queue_add(tcb);
+    // tprintf("thread yield: tid=%d\n", tcb->id);
+    // // dump_ready_queue();
+    // // halt();
+    // sched();
 }
 
 void thread_exit(){
@@ -46,8 +46,11 @@ void thread_exit(){
 }
 
 void thread_preempt(){
-    PIC_sendEOI();
-    tprintf("thread preempt\n");
+    thread_ctl_blk_t* tcb = get_current_tcb(TRUE);
+    tcb->state = READY;
+    ready_queue_add(tcb);
+    tprintf("TP(%d)", tcb->id);
+    sched();
 }
 
 int thread_create(void* func){

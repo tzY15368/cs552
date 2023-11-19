@@ -40,7 +40,7 @@ void f1(){
   // print_esp();
   // sleep(2000);
   // print_eip();
-  for(int i=0;i<2;i++){
+  for(int i=0;i<5;i++){
     tprintf("<1-%d>",i*2);
     sleep(1000);
     thread_yield();
@@ -51,7 +51,7 @@ void f1(){
 void f2(){
   // print_esp();
   // print_eip();
-  for(int i=0;i<2;i+=1){
+  for(int i=0;i<5;i+=1){
     tprintf("<2-%d>", 1+i*2);
     sleep(1000);
     thread_yield();
@@ -95,7 +95,7 @@ void init( multiboot* pmb ) {
   idt_init();
   
   pic_init();
-
+  init_pit();
   // int i = 0;
   // i = 100 / i;
 

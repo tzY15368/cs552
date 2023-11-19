@@ -54,13 +54,14 @@ void set_current_tcb(thread_ctl_blk_t* tcb){
 static int SCHED_CNT = 0;
 
 void sched(){
-  SCHED_CNT += 1;
+    SCHED_CNT += 1;
     // tprintf("<-->sched: %d<-->", SCHED_CNT);
     // dump_ready_queue(&ready_queue);
     thread_ctl_blk_t* tcb = ready_queue_get(&ready_queue);
     // dump_ready_queue(&ready_queue);
     if(tcb == NULL){
       tprintf("sched: tcb is null\n");
+      set_current_tcb(NULL);
       halt();
     }
     // tprintf("[%d]: sched: before exec: %d\n", SCHED_CNT, tcb->id);
@@ -72,6 +73,7 @@ void sched(){
     if(prev_tcb == NULL){
 
       // tprintf("[%d]: %d -> %d (PREV=NULL)\n", SCHED_CNT, dummy_tcb.id, tcb->id);
+      // IRQ_clear_mask(0);
       ctx_switch(&dummy_tcb.ctx, tcb->ctx);
 
     } else {
@@ -82,6 +84,7 @@ void sched(){
       }
       
       if(prev_tcb!=tcb){
+        // IRQ_clear_mask(0);
         // tprintf("[%d]: %d -> %d\n", SCHED_CNT, prev_tcb->id, tcb->id);
         ctx_switch(&prev_tcb->ctx, tcb->ctx);
       }
