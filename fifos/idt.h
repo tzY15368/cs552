@@ -51,9 +51,10 @@ void interrupt_handler(unsigned long long interrupt_number) {
 	terminal_writestring("\n");
 	// if(interrupt_number < 8) 
 	// 	outb(0x20, 0x20);
-	// else if(interrupt_number < 16)
+	// else
 	// 	outb(0x20, 0xA0);
-	__asm__ volatile ("iret");
+	// __asm__ volatile ("cli;iret");
+	__asm__ volatile ("popa;iret");
 }
 
 void idt_init() {
