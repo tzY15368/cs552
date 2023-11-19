@@ -30,6 +30,7 @@ void timer_handler(){
     // tprintf("[%d]", read_pit_count());
     
     PIC_sendEOI(0);
+    __asm__ volatile("sti");
     // IRQ_set_mask(0);
     tprintf("`");
     thread_ctl_blk_t* tcb = get_current_tcb(FALSE);

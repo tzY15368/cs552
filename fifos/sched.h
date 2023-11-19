@@ -90,7 +90,7 @@ void sched(){
       }
     }
 
-    // tprintf("sched: after exec: %d\n", tcb->id);
+    // tprintf("sched: after exec: %d, prev: %d\n", tcb->id, prev_tcb->id);
     return;
     // dump_thread_pool(&thread_pool);
 }
