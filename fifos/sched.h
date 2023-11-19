@@ -63,7 +63,7 @@ void sched(){
       tprintf("sched: tcb is null\n");
       halt();
     }
-    tprintf("[%d]: sched: before exec: %d\n", SCHED_CNT, tcb->id);
+    // tprintf("[%d]: sched: before exec: %d\n", SCHED_CNT, tcb->id);
     thread_ctl_blk_t* prev_tcb = get_current_tcb(FALSE);
 
     tcb->state = RUNNING;
@@ -87,20 +87,20 @@ void sched(){
       }
     }
 
-    tprintf("sched: after exec: %d\n", tcb->id);
+    // tprintf("sched: after exec: %d\n", tcb->id);
     return;
     // dump_thread_pool(&thread_pool);
 }
 
 void start_sched(){
-  uint32_t* dummy_stack_ptr = (uint32_t) dummy_tcb.stack + STACK_SIZE - 1;
+  uint32_t* dummy_stack_ptr = (uint32_t*) dummy_tcb.stack + STACK_SIZE - 1;
   *((dummy_stack_ptr)-0) = 0;
 
   dummy_tcb.id = -1;
   dummy_tcb.bp = (uint32_t) ((uint32_t*)dummy_stack_ptr -1);
   dummy_tcb.func = (uint32_t) noop;
   dummy_tcb.state = READY;
-  context_t* stack = dummy_stack_ptr - sizeof(context_t);
+  context_t* stack = (context_t*) dummy_stack_ptr - sizeof(context_t);
   dummy_tcb.ctx = stack;
 
   dummy_tcb.ctx->eip = dummy_tcb.func;

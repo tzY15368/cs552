@@ -20,6 +20,10 @@
 #include "sched.h"
 #endif
 
+#ifndef PIC_H
+#include "pic.h"
+#endif
+
 
 void thread_yield(){
     thread_ctl_blk_t* tcb = get_current_tcb(TRUE);
@@ -39,6 +43,11 @@ void thread_exit(){
 
     // halt();
     sched();
+}
+
+void thread_preempt(){
+    PIC_sendEOI();
+    tprintf("thread preempt\n");
 }
 
 int thread_create(void* func){

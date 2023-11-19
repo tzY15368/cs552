@@ -27,24 +27,33 @@
 #include "sched.h"
 #endif
 
+#ifndef PIC_H
+#include "pic.h"
+#endif
+
+#ifndef IDT_H
+#include "idt.h"
+#endif
+
 void f1(){
   // tprintf("f1\n");
   // print_esp();
   // sleep(2000);
   // print_eip();
-  for(int i=0;i<10;i+=2){
-    tprintf("<1-%d>",i);
+  for(int i=0;i<2;i++){
+    tprintf("<1-%d>",i*2);
+    sleep(1000);
     thread_yield();
   }
   tprintf("end of f1\n");
 }
 
 void f2(){
-  tprintf("f2\n");
   // print_esp();
   // print_eip();
-  for(int i=1;i<11;i+=2){
-    tprintf("<2-%d>", i);
+  for(int i=0;i<2;i+=1){
+    tprintf("<2-%d>", 1+i*2);
+    sleep(1000);
     thread_yield();
   }
   // thread_yield();
@@ -83,6 +92,13 @@ void init( multiboot* pmb ) {
 
   terminal_initialize();
   init_descriptor_tables();
+  idt_init();
+  
+  pic_init();
+
+  // int i = 0;
+  // i = 100 / i;
+
 
   thread_pool_init();
   ready_queue_init();
