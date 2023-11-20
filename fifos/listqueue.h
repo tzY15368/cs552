@@ -5,7 +5,7 @@
 #endif
 
 typedef struct list_node {
-    list_node_t* next;
+    struct list_node* next;
     void* data;
 } list_node_t;
 

@@ -29,11 +29,11 @@ void thread_yield(){
     thread_ctl_blk_t* tcb = get_current_tcb(TRUE);
     tcb->state = READY;
     ready_queue_add(tcb);
-    tprintf("thread before yield: tid=%d\n", tcb->id);
+    // tprintf("thread before yield: tid=%d\n", tcb->id);
     // dump_ready_queue();
     // halt();
     sched();
-    tprintf("thread after yield: tid=%d\n", tcb->id);
+    // tprintf("thread after yield: tid=%d\n", tcb->id);
 }
 
 void thread_exit(){
@@ -51,7 +51,7 @@ void thread_preempt(){
     thread_ctl_blk_t* tcb = get_current_tcb(TRUE);
     tcb->state = READY;
     ready_queue_add(tcb);
-    tprintf("TP(%d)", tcb->id);
+    // tprintf("TP(%d)", tcb->id);
     sched();
 }
 

@@ -8,7 +8,7 @@
 #include "utils.h"
 #endif
 
-#define HEAP_SIZE 4096
+#define HEAP_SIZE 40960
 
 typedef struct heap {
     uint32_t data[HEAP_SIZE];

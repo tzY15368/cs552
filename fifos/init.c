@@ -35,27 +35,42 @@
 #include "idt.h"
 #endif
 
+#ifndef SYNC_H
+#include "sync.h"
+#endif
+
+static mutex_t* global_mutex;
+static cond_t* global_cond;
+
 void f1(){
-  // tprintf("f1\n");
+  tprintf("f1\n");
   // print_esp();
   // sleep(2000);
   // print_eip();
   for(int i=0;i<5;i++){
+    mutex_lock(global_mutex);
     tprintf("<1-%d>",i*2);
     sleep(1000);
-    thread_yield();
+    if(i > 1){
+      cond_signal(global_cond);
+    }
+    // thread_yield();
+    mutex_unlock(global_mutex);
   }
-  tprintf("end of f1\n");
+  // tprintf("end of f1\n");
 }
 
 void f2(){
   // print_esp();
   // print_eip();
+  mutex_lock(global_mutex);
+  cond_wait(global_cond);
   for(int i=0;i<5;i+=1){
     tprintf("<2-%d>", 1+i*2);
     sleep(1000);
-    thread_yield();
+    // thread_yield();
   }
+  mutex_unlock(global_mutex);
   // thread_yield();
   // f1();
   tprintf("end of f2\n");
@@ -89,7 +104,7 @@ void init( multiboot* pmb ) {
 				    */
 
   itoa(memstr, 'd', memsz);
-
+  heap_init();
   terminal_initialize();
   init_descriptor_tables();
   idt_init();
@@ -98,15 +113,16 @@ void init( multiboot* pmb ) {
   init_pit();
   // int i = 0;
   // i = 100 / i;
-
+  mutex_init(global_mutex);
+  cond_init(global_mutex);
 
   thread_pool_init();
   ready_queue_init();
   sched_init();
 
   tprintf("thread pool size: %d\n", thread_pool.size);
-  thread_create(f1);
   thread_create(f2);
+  thread_create(f1);
 
 
   start_sched();
