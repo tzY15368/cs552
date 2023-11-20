@@ -97,21 +97,23 @@ void IRQ_clear_mask(unsigned char IRQline) {
     value = inb(port) & ~(1 << IRQline);
     outb(port, value);
 }
-
+extern void* setup_pit();
 void init_pit()
 {
-	IRQ_clear_mask(0);
-	__asm__ volatile("cli");
-  	outb(0x34, 0x43); //00 11 010 0 to command port 0x43
+	tprintf("start pit init\n");
+	// IRQ_clear_mask(0);
+	// __asm__ volatile("cli");
+  	// outb(0x34, 0x43); //00 11 010 0 to command port 0x43
 
-	//time in ms = reload_value / 1193181 * 1000
-	// reload val = time in ms * 1193181 / 1000
+	// //time in ms = reload_value / 1193181 * 1000
+	// // reload val = time in ms * 1193181 / 1000
 
-	// 100000000000
-  	outb((PIT_FREQ ) & 0xFF, 0x40); //counter 0 low byte written to channel 0 data port 0x40
-  	outb((PIT_FREQ ) >> 8, 0x40); //counter 0 high byte
+	// // 100000000000
+  	// outb((PIT_FREQ / 100) & 0xFF, 0x40); //counter 0 low byte written to channel 0 data port 0x40
+  	// outb((PIT_FREQ / 100) >> 8, 0x40); //counter 0 high byte
+	setup_pit();
     __asm__ volatile("sti");
-	tprintf("init pit\n");
+	tprintf("end init pit\n");
 }
 
 unsigned read_pit_count() {

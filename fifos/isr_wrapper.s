@@ -1,6 +1,7 @@
 # ; filename: isr_wrapper.s
 .globl   isr_wrapper
 .globl   timer_wrapper
+.globl   setup_pit
 .align   4
  
 isr_wrapper:
@@ -16,3 +17,14 @@ timer_wrapper:
     call timer_handler
     popal
     iret
+
+setup_pit:
+    # 00110100
+    movl $119318, %edx # 1193180 / 100
+    movl $0x34, %eax # 00110100  =0x34
+    out %al, $0x43
+
+    movl %edx, %eax
+    out %al, $0x40
+    xchg %ah, %al
+    out %al, $0x40

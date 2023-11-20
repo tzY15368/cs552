@@ -26,13 +26,21 @@ void interrupt_handler() {
     PIC_sendEOI(0);
 }
 
+static uint32_t tc = 0;
+
+// Typically the BIOS configures this channel with a count of 65536, 
+// which gives an output frequency of 18.2065 Hz. This fires IRQ 0 every 54.9254 ms.
 void timer_handler(){
     // tprintf("[%d]", read_pit_count());
     
     PIC_sendEOI(0);
+    tc++;
+    if(1){
+        tprintf("`");
+    }
     __asm__ volatile("sti");
     // IRQ_set_mask(0);
-    tprintf("`");
+    // tprintf("`");
     thread_ctl_blk_t* tcb = get_current_tcb(FALSE);
     if(tcb != NULL){
         thread_preempt();
