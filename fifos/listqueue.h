@@ -15,11 +15,13 @@ typedef struct queue {
     int id;
 } listqueue_t;
 
+static int qid = 0;
+
 listqueue_t* listqueue_init(){
     listqueue_t* q = (listqueue_t*) malloc(sizeof(listqueue_t));
     q->head = NULL;
     q->size = 0;
-    q->id = 123;
+    q->id = ++qid;
     return q;
 }
 

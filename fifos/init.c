@@ -104,9 +104,17 @@ void init( multiboot* pmb ) {
 				    */
 
   itoa(memstr, 'd', memsz);
-  heap_init();
   terminal_initialize();
   init_descriptor_tables();
+
+  heap_init();
+
+  listqueue_t* q = listqueue_init();
+  tprintf("listqueue %d size: %d\n", q->id, q->size);
+
+  listqueue_t* q2 = listqueue_init();
+  tprintf("listqueue %d size: %d\n", q2->id, q2->size);
+
   idt_init();
   
   pic_init();
@@ -114,7 +122,7 @@ void init( multiboot* pmb ) {
   // int i = 0;
   // i = 100 / i;
   mutex_init(global_mutex);
-  cond_init(global_mutex);
+  global_cond = cond_init(global_mutex);
 
   thread_pool_init();
   ready_queue_init();

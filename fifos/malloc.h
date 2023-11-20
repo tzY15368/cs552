@@ -7,7 +7,7 @@
 #ifndef UTILS_H
 #include "utils.h"
 #endif
-#define ALIGN(x, a) (((x) + (a - 1)) & ~(a - 1))
+// #define ALIGN(x, a) (((x) + (a - 1)) & ~(a - 1))
 #define HEAP_SIZE 40960
 
 typedef struct heap {
@@ -19,23 +19,25 @@ typedef struct heap {
 static heap_t local_heap;
 
 void heap_init(){
-    local_heap.start = &local_heap.data[0];
-    local_heap.end = &local_heap.data[HEAP_SIZE];
+    local_heap.start = local_heap.data;
+    local_heap.end = local_heap.data + HEAP_SIZE;
 };
 
 
 // no gc whatsoever
 void* malloc(uint32_t obj_size){
+    // tprintf("malloc: size: %d\n", obj_size);
     if (obj_size > HEAP_SIZE){
         return 0;
     }
-    local_heap.start = (uint32_t*)ALIGN((uint32_t)local_heap.start, sizeof(uint32_t));
+    // local_heap.start = (uint32_t*)ALIGN((uint32_t)local_heap.start, sizeof(uint32_t));
     if (local_heap.start + obj_size > local_heap.end){
         tprintf("Out of memory\n");
         halt();
         return NULL;
     }
     uint32_t* start = local_heap.start;
-    local_heap.start += obj_size;
+    local_heap.start += (obj_size+1);
+    // tprintf("malloc: %d\n", start);
     return (void*) start;
 };

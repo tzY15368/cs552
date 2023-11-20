@@ -65,6 +65,7 @@ cond_t* cond_init(mutex_t* mu){
     // halt();
     cond->mu = mu;
     cond->wait_queue = listqueue_init();
+    tprintf("cond init with q id: %d", cond->wait_queue->id);
     return cond;
 }
 
@@ -73,23 +74,24 @@ void cond_wait(cond_t* cond){
     thread_ctl_blk_t* tcb = get_current_tcb(TRUE);
     tcb->state = WAITING;
     listqueue_put(cond->wait_queue, tcb);
-    tprintf("q id: %d", cond->wait_queue->id);
-    tprintf("thread %d will sleep: sz: %d\n", tcb->id, cond->wait_queue->size);
+    // tprintf("cond addr: %d", cond);
+    // tprintf("q id: %d", cond->wait_queue->id);
+    // tprintf("thread %d will sleep: sz: %d\n", tcb->id, cond->wait_queue->size);
     sched();
     mutex_lock(cond->mu);
 }
 
 void cond_signal(cond_t* cond){
     thread_ctl_blk_t* tcb_cur = get_current_tcb(TRUE);
-    tprintf("signal on thread %d", tcb_cur->id);
+    // tprintf("signal on thread %d", tcb_cur->id);
 
     thread_ctl_blk_t* tcb = (thread_ctl_blk_t*) listqueue_get(cond->wait_queue);
     if(tcb != NULL){
         tcb->state = READY;
         ready_queue_add(tcb);
-        tprintf("thread %d will resume:\n", tcb->id);
+        tprintf("thread %d will resume by %d:\n", tcb->id, tcb_cur->id);
     } else {
-        tprintf("no thread to resume\n");
+        // tprintf("no thread to resume\n");
     }
 }
 
