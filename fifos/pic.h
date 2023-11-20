@@ -100,7 +100,7 @@ void IRQ_clear_mask(unsigned char IRQline) {
 extern void* setup_pit();
 void init_pit()
 {
-	tprintf("start pit init\n");
+	// tprintf("start pit init\n");
 	// IRQ_clear_mask(0);
 	// __asm__ volatile("cli");
   	// outb(0x34, 0x43); //00 11 010 0 to command port 0x43
@@ -113,7 +113,7 @@ void init_pit()
   	// outb((PIT_FREQ / 100) >> 8, 0x40); //counter 0 high byte
 	setup_pit();
     __asm__ volatile("sti");
-	tprintf("end init pit\n");
+	// tprintf("end init pit\n");
 }
 
 unsigned read_pit_count() {

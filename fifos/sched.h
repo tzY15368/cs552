@@ -96,6 +96,7 @@ void sched(){
 }
 
 void start_sched(){
+  tprintf("\n");
   uint32_t* dummy_stack_ptr = (uint32_t*) dummy_tcb.stack + STACK_SIZE - 1;
   *((dummy_stack_ptr)-0) = 0;
 

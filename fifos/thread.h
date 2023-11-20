@@ -60,7 +60,7 @@ int thread_create(void* func){
         tprintf("thread_create: no idle thread\n");
         return -1;
     }
-    tprintf("create thread %d\n", tcb->id);
+    tprintf("thread(%d);", tcb->id);
     uint32_t stack_ptr = (uint32_t) tcb->stack + STACK_SIZE - 1;
 
     *(((uint32_t*) stack_ptr) - 0) = (uint32_t) thread_exit;

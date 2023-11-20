@@ -26,6 +26,12 @@ void mutex_init(mutex_t* mu){
     mu->locked = 0;
 }
 
+mutex_t* mutex_new(){
+    mutex_t* mu = (mutex_t*)malloc(sizeof(mutex_t));
+    mutex_init(mu);
+    return mu;
+}
+
 void mutex_print(mutex_t* mu){
     tprintf("mutex: %d\n", mu->locked);
 }
@@ -65,7 +71,7 @@ cond_t* cond_init(mutex_t* mu){
     // halt();
     cond->mu = mu;
     cond->wait_queue = listqueue_init();
-    tprintf("cond init with q id: %d", cond->wait_queue->id);
+    tprintf("cond(%d);", cond->wait_queue->id);
     return cond;
 }
 

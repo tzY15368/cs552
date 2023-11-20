@@ -39,8 +39,13 @@
 #include "sync.h"
 #endif
 
+#ifndef SYNCHROS_H
+#include "synchros.h"
+#endif
+
 static mutex_t* global_mutex;
 static cond_t* global_cond;
+
 
 void f1(){
   tprintf("f1\n");
@@ -132,15 +137,23 @@ void init( multiboot* pmb ) {
   mutex_init(global_mutex);
   global_cond = cond_init(global_mutex);
 
+  global_rb = ringbuf_init();
+
   thread_pool_init();
   ready_queue_init();
   sched_init();
 
   tprintf("thread pool size: %d\n", thread_pool.size);
-  thread_create(f2);
-  thread_create(f1);
-  thread_create(f3);
-  thread_create(f4);
+  thread_create(producer);  
+  thread_create(producer);
+
+  thread_create(consumer);
+  thread_create(consumer);
+  
+  // thread_create(f2);
+  // thread_create(f1);
+  // thread_create(f3);
+  // thread_create(f4);
 
   start_sched();
 }
