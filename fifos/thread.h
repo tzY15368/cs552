@@ -39,8 +39,7 @@ void thread_yield(){
 void thread_exit(){
     thread_ctl_blk_t* tcb = get_current_tcb(TRUE);
     tcb->state = TERMINATED;
-    tprintf("thread exit: tid=%d\n", tcb->id);
-    // dump_ready_queue();
+    tprintf("[X%d]", tcb->id);
 
     // halt();
     sched();

@@ -76,6 +76,20 @@ void f2(){
   tprintf("end of f2\n");
 }
 
+void f3(){
+  for(int i=0;i<3;i++){
+    tprintf("<3-%d>", i);
+    sleep(500);
+  }
+}
+
+void f4(){
+  for(int i=0;i<4;i++){
+    tprintf("<4-%d>", i);
+    sleep(500);
+  }
+}
+
 void init( multiboot* pmb ) {
  
    memory_map_t *mmap;
@@ -109,12 +123,6 @@ void init( multiboot* pmb ) {
 
   heap_init();
 
-  listqueue_t* q = listqueue_init();
-  tprintf("listqueue %d size: %d\n", q->id, q->size);
-
-  listqueue_t* q2 = listqueue_init();
-  tprintf("listqueue %d size: %d\n", q2->id, q2->size);
-
   idt_init();
   
   pic_init();
@@ -131,7 +139,8 @@ void init( multiboot* pmb ) {
   tprintf("thread pool size: %d\n", thread_pool.size);
   thread_create(f2);
   thread_create(f1);
-
+  thread_create(f3);
+  thread_create(f4);
 
   start_sched();
 }
