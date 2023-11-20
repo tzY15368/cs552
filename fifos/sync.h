@@ -26,6 +26,10 @@ void mutex_init(mutex_t* mu){
     mu->locked = 0;
 }
 
+void mutex_print(mutex_t* mu){
+    tprintf("mutex: %d\n", mu->locked);
+}
+
 void mutex_lock(mutex_t* mu){
     // use CAS with inline assembly to lock
     int loop = 0;
@@ -69,6 +73,7 @@ void cond_wait(cond_t* cond){
     thread_ctl_blk_t* tcb = get_current_tcb(TRUE);
     tcb->state = WAITING;
     listqueue_put(cond->wait_queue, tcb);
+    tprintf("q id: %d", cond->wait_queue->id);
     tprintf("thread %d will sleep: sz: %d\n", tcb->id, cond->wait_queue->size);
     sched();
     mutex_lock(cond->mu);
@@ -82,7 +87,9 @@ void cond_signal(cond_t* cond){
     if(tcb != NULL){
         tcb->state = READY;
         ready_queue_add(tcb);
-        tprintf("thread %d will resume:", tcb->id);
+        tprintf("thread %d will resume:\n", tcb->id);
+    } else {
+        tprintf("no thread to resume\n");
     }
 }
 

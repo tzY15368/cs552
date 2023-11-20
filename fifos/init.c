@@ -48,14 +48,14 @@ void f1(){
   // sleep(2000);
   // print_eip();
   for(int i=0;i<5;i++){
-    mutex_lock(global_mutex);
+    // mutex_lock(global_mutex);
     tprintf("<1-%d>",i*2);
     sleep(1000);
     if(i > 1){
       cond_signal(global_cond);
     }
     // thread_yield();
-    mutex_unlock(global_mutex);
+    // mutex_unlock(global_mutex);
   }
   // tprintf("end of f1\n");
 }

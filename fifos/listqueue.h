@@ -12,12 +12,14 @@ typedef struct list_node {
 typedef struct queue {
     list_node_t* head;
     int size;
+    int id;
 } listqueue_t;
 
 listqueue_t* listqueue_init(){
     listqueue_t* q = (listqueue_t*) malloc(sizeof(listqueue_t));
     q->head = NULL;
     q->size = 0;
+    q->id = 123;
     return q;
 }
 
