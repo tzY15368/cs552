@@ -20,7 +20,7 @@ timer_wrapper:
 
 setup_pit:
     # 00110100
-    movl $119318, %edx # 1193180 / 100
+    movl $119318, %edx # 1193180 / 10 = 100ms
     movl $0x34, %eax # 00110100  =0x34
     out %al, $0x43
 

@@ -18,6 +18,7 @@
 
 .globl ctx_switch
 ctx_switch:
+  # load arguments: **old_ctx, *new_ctx
   movl 4(%esp), %eax
   movl 8(%esp), %edx
 
