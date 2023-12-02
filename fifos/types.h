@@ -2,6 +2,7 @@
 
 
 #define STACK_SIZE 4096 // 4kb stack
+#define FDS_PER_THREAD 1024
 #define N_THREADS 2
 
 #define FALSE 0
@@ -36,6 +37,9 @@ typedef uint32 uint32_t;
 typedef uint64 uint64_t;
 #endif
 
+#ifndef FS_H
+#include "fs.h"
+#endif
 typedef struct context{
 	uint16_t ds;
 	uint16_t es;
@@ -68,7 +72,7 @@ typedef struct thread_ctl_blk {
     uint32_t esp;
     uint32_t func;
     context_t* ctx; // points to the context on the stack, not an actual context
-
+    file_descriptor_t fds[FDS_PER_THREAD];
 } thread_ctl_blk_t;
 
 typedef struct thread_pool{
