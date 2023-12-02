@@ -18,6 +18,8 @@
 
 #define IDT_MAX_DESCRIPTORS 256
 
+#define PREEMPTION_ON 0 // on for 1, off for 0
+
 extern void* isr_wrapper();
 extern void* timer_wrapper();
 
@@ -35,12 +37,15 @@ void timer_handler(){
     
     PIC_sendEOI(0);
     tc++;
-    if(1){
+    if(PREEMPTION_ON){
         tprintf("`");
     }
     __asm__ volatile("sti");
     // IRQ_set_mask(0);
     // tprintf("`");
+    if(!PREEMPTION_ON){
+        return;
+    }
     thread_ctl_blk_t* tcb = get_current_tcb(FALSE);
     if(tcb != NULL){
         thread_preempt();

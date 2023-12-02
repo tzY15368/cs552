@@ -43,6 +43,10 @@
 #include "synchros.h"
 #endif
 
+#ifndef FS_H
+#include "fs.h"
+#endif
+
 static mutex_t* global_mutex;
 static cond_t* global_cond;
 
@@ -56,9 +60,9 @@ void f1(){
     // mutex_lock(global_mutex);
     tprintf("<1-%d>",i*2);
     sleep(1000);
-    if(i > 1){
-      cond_signal(global_cond);
-    }
+    // if(i > 1){
+    //   cond_signal(global_cond);
+    // }
     // thread_yield();
     // mutex_unlock(global_mutex);
   }
@@ -68,14 +72,14 @@ void f1(){
 void f2(){
   // print_esp();
   // print_eip();
-  mutex_lock(global_mutex);
-  cond_wait(global_cond);
+  // mutex_lock(global_mutex);
+  // cond_wait(global_cond);
   for(int i=0;i<5;i+=1){
     tprintf("<2-%d>", 1+i*2);
     sleep(1000);
     // thread_yield();
   }
-  mutex_unlock(global_mutex);
+  // mutex_unlock(global_mutex);
   // thread_yield();
   // f1();
   tprintf("end of f2\n");
@@ -95,11 +99,18 @@ void f4(){
   }
 }
 
+void discosf1(){
+  tprintf("df1\n");
+}
+
+void discosf2(){
+  tprintf("df2\n");
+}
+
 void init( multiboot* pmb ) {
  
    memory_map_t *mmap;
    unsigned int memsz = 0;		/* Memory size in MB */
-   static char memstr[10];
 
   for (mmap = (memory_map_t *) pmb->mmap_addr;
        (unsigned long) mmap < pmb->mmap_addr + pmb->mmap_length;
@@ -122,8 +133,12 @@ void init( multiboot* pmb ) {
 				   specified to QEMU.
 				    */
 
-  itoa(memstr, 'd', memsz);
   terminal_initialize();
+  if(memsz < 64){
+    tprintf("Not enough memory: %dMB\n", memsz);
+    return;
+  }
+  
   init_descriptor_tables();
 
   heap_init();
@@ -143,12 +158,17 @@ void init( multiboot* pmb ) {
   ready_queue_init();
   sched_init();
 
-  tprintf("thread pool size: %d\n", thread_pool.size);
-  thread_create(producer);  
-  thread_create(producer);
+  tprintf("TP=%d\n", thread_pool.size);
+  tprintf("Preemption=%d",PREEMPTION_ON);
+  ramdisk_init();
 
-  thread_create(consumer);
-  thread_create(consumer);
+  thread_create(discosf1);
+  thread_create(discosf2);
+  // thread_create(producer);  
+  // thread_create(producer);
+
+  // thread_create(consumer);
+  // thread_create(consumer);
   
   // thread_create(f2);
   // thread_create(f1);

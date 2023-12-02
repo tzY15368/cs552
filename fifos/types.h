@@ -2,7 +2,7 @@
 
 
 #define STACK_SIZE 4096 // 4kb stack
-#define N_THREADS 4
+#define N_THREADS 2
 
 #define FALSE 0
 #define TRUE 1
