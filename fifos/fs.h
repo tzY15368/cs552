@@ -16,11 +16,6 @@
 #include "fsutils.h"
 #endif
 
-
-
-static partition_t* ramfs = (partition_t*)ramdisk; 				//Our partition
-static inode_t* root_inode;
-
 // TODO: test this
 void __bitmap_set(uint8_t* bitmap, int block_num, bool bit_value){
     int byte_num = block_num / 8;
@@ -65,10 +60,6 @@ int get_free_inode(){
         }
     }
     return -1;
-}
-
-void file_init(int inode_num){
-    inode_t* inode = &ramfs->inode[inode_num];
 }
 
 void ramdisk_init(){
@@ -157,7 +148,7 @@ int rd_mkdir(char *pathname){
             new_dir->inode_num = get_free_inode();
             strcpy(new_dir->filename, cur_path);
             // append new dir to cur_inode
-            int r = inode_append_bytes(cur_inode, new_dir, sizeof(dir_entry_t));
+            int r = inode_write_bytes(cur_inode, -1, new_dir, sizeof(dir_entry_t));
             if(r == -1){
                 return -1;
             }
@@ -166,9 +157,52 @@ int rd_mkdir(char *pathname){
     return 0;
 };
 int rd_open(char *pathname, int flags);
-int rd_close(int fd);
-int rd_read(int fd, char *address, int num_bytes);
-int rd_write(int fd, char *address, int num_bytes);
-int rd_lseek(int fd, int offset);
 int rd_unlink(char *pathname);
-int rd_readdir(int fd, char *address);
+int rd_close(int fd){
+    if(fd < 0) return -1;
+    thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
+    file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
+    if(file_descriptor->in_use == FALSE) return -1;
+    file_descriptor->in_use = FALSE;
+    file_descriptor->fd_num = -1;
+    file_descriptor->offset = 0;
+    file_descriptor->inode = NULL;
+    return 0;
+}
+int rd_read(int fd, char *address, int num_bytes){
+    if(fd < 0) return -1;
+    thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
+    file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
+    if(file_descriptor->in_use == FALSE) return -1;
+    int r = inode_read_bytes(file_descriptor->inode, file_descriptor->offset, address, num_bytes);
+    return r;
+}
+int rd_write(int fd, char *address, int num_bytes){
+    if(fd < 0) return -1;
+    thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
+    file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
+    if(file_descriptor->in_use == FALSE) return -1;
+    int r = inode_write_bytes(file_descriptor->inode, file_descriptor->offset, address, num_bytes);
+    return r;
+}
+int rd_lseek(int fd, int offset){
+    if(fd < 0) return -1;
+    thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
+    file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
+    if(file_descriptor->in_use == FALSE) return -1;
+    if(offset < 0 || offset > file_descriptor->inode->size) return -1;
+    file_descriptor->offset = offset;
+    return 0;
+}
+int rd_readdir(int fd, char *address){
+    if(fd < 0) return -1;
+    thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
+    file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
+    if(file_descriptor->in_use == FALSE) return -1;
+    // return 1 on ok, 0 on eof, -1 on error
+    if(file_descriptor->offset >= file_descriptor->inode->size) return 0;
+    int r = inode_read_bytes(file_descriptor->inode, file_descriptor->offset, address, sizeof(dir_entry_t));
+    if(r == -1) return -1;
+    file_descriptor->offset += 1;
+    return 1;
+}
