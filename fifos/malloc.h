@@ -8,10 +8,10 @@
 #include "utils.h"
 #endif
 // #define ALIGN(x, a) (((x) + (a - 1)) & ~(a - 1))
-#define HEAP_SIZE 40960
+#define HEAP_SIZE 4096000
 
 typedef struct heap {
-    uint32_t data[HEAP_SIZE];
+    uint32_t data[HEAP_SIZE]; // WARNING: THIS IS BUGGED, SHOULD BE UINT8
     uint32_t* start;
     uint32_t* end;
 } heap_t;

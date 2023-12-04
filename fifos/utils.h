@@ -74,7 +74,15 @@ uint16_t make_vgaentry(char c, uint8_t color)
   uint16_t color16 = color;
   return c16 | color16 << 8;
 }
- 
+
+int min(int a, int b){
+  return a < b ? a : b;
+}
+
+int max(int a, int b){
+  return a > b ? a : b;
+}
+
 size_t strlen(const char* str)
 {
   size_t ret = 0;
