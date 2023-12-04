@@ -48,12 +48,17 @@ int get_free_block(){
     return -1;
 }
 
-int get_free_inode(){
+int get_free_inode(int inode_type){
     if(ramfs->superblock.free_inodes == 0){
         return -1;
     }
     for(int i = 0; i < N_INODES; i++){
         if(ramfs->inode[i].in_use == FALSE){
+            ramfs->inode[i].type = inode_type;
+            ramfs->inode[i].size = 0;
+            for(int j = 0; j < 10; j++){
+                ramfs->inode[i].location[j] = NULL;
+            }
             ramfs->inode[i].in_use = TRUE;
             ramfs->superblock.free_inodes--;
             return i;
@@ -98,64 +103,14 @@ void ramdisk_init(){
 
 
 int rd_creat(char *pathname){
-
+    int r = dir_walk(pathname, TRUE, INODE_TYPE_REG);
+    return r == -1? -1: 0;
 };
 int rd_mkdir(char *pathname){
-    listqueue_t* pathQueue = path_to_list(pathname);
+    int r = dir_walk(pathname, TRUE, INODE_TYPE_DIR);
+    return r == -1? -1: 0;
+}
 
-    tprintf("path queue size: %d\n", pathQueue->size);
-    int sz = pathQueue->size;
-    inode_t* cur_inode = root_inode;
-    for(int i=0; i<sz; i++){
-        char* cur_path = listqueue_get(pathQueue);
-        
-        // traverse cur_inode and see if cur_path exists
-        listqueue_t* blk_list = get_blk_list(cur_inode);
-        int blk_list_sz = blk_list->size;
-        int max_iter = cur_inode->size;
-        bool found = FALSE;
-        for(int j=0; j<blk_list_sz; j++){
-            block_t* blk = listqueue_get(blk_list);
-            bool shouldBreak = FALSE;
-            for(int k=0; k<RAMDISK_BLK_SIZE; k+=sizeof(dir_entry_t)){
-                max_iter -= 1;
-                
-                dir_entry_t* dir = (dir_entry_t*) blk->data_byte[k];
-                if(strcmp(dir->filename, cur_path, 16) == TRUE){
-                    // found
-                    if(i == sz-1){
-                        // last one
-                        return -1;
-                    }
-                    found = TRUE;
-                    cur_inode = &ramfs->inode[dir->inode_num];
-                    shouldBreak = TRUE;
-                    break;
-                }
-                if(max_iter == 0){
-                    // not found
-                    shouldBreak = TRUE;
-                    break;
-                }
-            }
-            if(shouldBreak){
-                break;
-            }
-        }
-        if(found == FALSE){
-            // create new dir
-            dir_entry_t* new_dir = (dir_entry_t*) malloc(sizeof(dir_entry_t));
-            new_dir->inode_num = get_free_inode();
-            strcpy(new_dir->filename, cur_path);
-            // append new dir to cur_inode
-            int r = inode_write_bytes(cur_inode, -1, new_dir, sizeof(dir_entry_t));
-            if(r == -1){
-                return -1;
-            }
-        }
-    }
-    return 0;
-};
 int rd_open(char *pathname, int flags);
 int rd_unlink(char *pathname);
 int rd_close(int fd){

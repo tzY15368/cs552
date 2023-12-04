@@ -42,6 +42,15 @@ bool strcmp(char* a, char* b, int max_iter){
   return a[i] == b[i];
 }
 
+void strcpy(char* src, char* dst, int max_iter){
+  int i = 0;
+  while(src[i] != '\0' && i < max_iter){
+    dst[i] = src[i];
+    i++;
+  }
+  dst[i] = '\0';
+}
+
 /* Hardware text mode color constants. */
 enum vga_color
 {

@@ -19,10 +19,6 @@
 
 static uint8_t ramdisk[RAMDISK_SIZE];
 
-
-static partition_t* ramfs = (partition_t*)ramdisk; 				//Our partition
-static inode_t* root_inode;
-
 typedef struct block{
 	uint8_t data_byte[RAMDISK_BLK_SIZE];
 }block_t;
@@ -59,3 +55,7 @@ typedef struct file_descriptor{
     int fd_num;
     int offset;
 } file_descriptor_t;
+
+
+static partition_t* ramfs = (partition_t*)ramdisk; 				//Our partition
+static inode_t* root_inode;

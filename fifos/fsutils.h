@@ -220,3 +220,75 @@ int get_new_fd(inode_t* inode){
     }
     return -1;
 }
+
+// /abc/def/c 
+
+// if create is false, ignore create_type, returns: -1 for not found, >0 for inode_num
+int dir_walk(char* pathname, bool create, int create_type){
+    listqueue_t* pathQueue = path_to_list(pathname);
+    int sz = pathQueue->size;
+    inode_t* cur_inode = root_inode;
+    for(int i=0; i<sz; i++){
+        if(i!=sz-1 && cur_inode->type != INODE_TYPE_DIR){
+            return -1;
+        }
+        char* cur_path = listqueue_get(pathQueue);
+
+        listqueue_t* blk_list = get_blk_list(cur_inode);
+        int blk_list_sz = blk_list->size;
+        int max_iter = cur_inode->size;
+        bool found = FALSE;
+        for(int j=0; j<blk_list_sz; j++){
+            block_t* blk = listqueue_get(blk_list);
+            bool shouldBreak = FALSE;
+            for(int k=0; k<RAMDISK_BLK_SIZE; k+=sizeof(dir_entry_t)){
+                max_iter -= 1;
+                
+                dir_entry_t* dir = (dir_entry_t*) blk->data_byte[k];
+                if(strcmp(dir->filename, cur_path, 16) == TRUE){
+                    // found
+                    if(i == sz-1){
+                        // last one
+                        return dir->inode_num;
+                    }
+                    found = TRUE;
+                    cur_inode = &ramfs->inode[dir->inode_num];
+                    shouldBreak = TRUE;
+                    break;
+                }
+                if(max_iter == 0){
+                    // not found
+                    shouldBreak = TRUE;
+                    break;
+                }
+            }
+            if(shouldBreak){
+                break;
+            }
+        }
+        if(found == FALSE && i == sz-1){
+            if(!create){
+                return -1;
+            }
+            if(create_type == INODE_TYPE_DIR){
+                // create new dir
+                dir_entry_t* new_dir = (dir_entry_t*) malloc(sizeof(dir_entry_t));
+                new_dir->inode_num = get_free_inode(INODE_TYPE_DIR);
+                // setup the inode
+                strcpy(cur_path, new_dir->filename, 16);
+                // append new dir to cur_inode
+                int r = inode_write_bytes(cur_inode, -1, new_dir, sizeof(dir_entry_t));
+                if(r == -1){
+                    return -1;
+                }
+            } else if(create_type == INODE_TYPE_REG){
+
+            } else {
+                return -1;
+            }
+        } else if(found == FALSE){
+            return -1;
+        }
+    }
+    return -1;
+}
