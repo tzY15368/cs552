@@ -2,10 +2,6 @@
 #define FSUTILS_H 1
 #endif
 
-#ifndef FS_H
-#include "fs.h"
-#endif
-
 #ifndef LISTQUEUE_H
 #include "listqueue.h"
 #endif
@@ -22,17 +18,70 @@
 #include "utils.h"
 #endif
 
+
+// TODO: test this
+void __bitmap_set(uint8_t* bitmap, int block_num, bool bit_value){
+    int byte_num = block_num / 8;
+    int bit_num = block_num % 8;
+    if(bit_value == TRUE){
+        bitmap[byte_num] |= (1 << bit_num);
+    }else{
+        bitmap[byte_num] &= ~(1 << bit_num);
+    }
+}
+
+// TODO: test this
+bool __bitmap_get(uint8_t* bitmap, int block_num){
+    int byte_num = block_num / 8;
+    int bit_num = block_num % 8;
+    return (bitmap[byte_num] >> bit_num) & 1;
+}
+
+int get_free_block(){
+    if(ramfs->superblock.free_blocks == 0){
+        return -1;
+    }
+    for(int i = 0; i < N_BLOCKS; i++){
+        if(!__bitmap_get(ramfs->bitmap, i)){
+            __bitmap_set(ramfs->bitmap, i, 1);
+            ramfs->superblock.free_blocks--;
+            return i;
+        }
+    }
+    return -1;
+}
+
+int get_free_inode(int inode_type){
+    if(ramfs->superblock.free_inodes == 0){
+        return -1;
+    }
+    for(int i = 0; i < N_INODES; i++){
+        if(ramfs->inode[i].in_use == FALSE){
+            ramfs->inode[i].type = inode_type;
+            ramfs->inode[i].size = 0;
+            for(int j = 0; j < 10; j++){
+                ramfs->inode[i].location[j] = NULL;
+            }
+            ramfs->inode[i].in_use = TRUE;
+            ramfs->superblock.free_inodes--;
+            return i;
+        }
+    }
+    return -1;
+}
+
 listqueue_t* path_to_list(char* pathname){
     char pathBuf[16];
     int pathIdx = 0;
     listqueue_t* pathQueue = listqueue_init();
     for(int i=0;i<16;i++){
         if(pathname[i] == '/'){
-            if(pathQueue->size!=0){
-                char realPath[16] = malloc(16 * sizeof(char));
+            if(pathBuf[0] != '\0'){
+                char* realPath = malloc(16 * sizeof(char));
                 for(int j=0;j<16;j++){
                     realPath[j] = pathBuf[j];
                 }
+                listqueue_put(pathQueue, realPath);
             }
             // clear pathBuf
             for(int j=0;j<16;j++){
@@ -43,6 +92,13 @@ listqueue_t* path_to_list(char* pathname){
             pathBuf[pathIdx] = pathname[i];
             pathIdx++;
         }
+    }
+    if(pathBuf[0] != '\0'){
+        char* realPath = malloc(16 * sizeof(char));
+        for(int j=0;j<16;j++){
+            realPath[j] = pathBuf[j];
+        }
+        listqueue_put(pathQueue, realPath);
     }
     return pathQueue;
 }
@@ -189,12 +245,12 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
 }
 
 // TODO: read
-int inode_read_bytes(inode_t* inode, uint32_t pos, uint8_t* in_buf, uint32_t size){
+int inode_read_bytes(inode_t* inode, uint32_t pos, char* in_buf, uint32_t size){
     return -1;
 }
 
 // TODO: returns bytes written, if -1 then fail
-int inode_write_bytes(inode_t* inode, uint32_t pos, uint8_t* out_buf, uint32_t size){
+int inode_write_bytes(inode_t* inode, uint32_t pos, char* out_buf, uint32_t size){
     if(pos > inode->size){
         return -1;
     }
@@ -244,7 +300,7 @@ int dir_walk(char* pathname, bool create, int create_type){
             for(int k=0; k<RAMDISK_BLK_SIZE; k+=sizeof(dir_entry_t)){
                 max_iter -= 1;
                 
-                dir_entry_t* dir = (dir_entry_t*) blk->data_byte[k];
+                dir_entry_t* dir = (dir_entry_t*) &blk->data_byte[k];
                 if(strcmp(dir->filename, cur_path, 16) == TRUE){
                     // found
                     if(i == sz-1){
@@ -277,7 +333,7 @@ int dir_walk(char* pathname, bool create, int create_type){
                 // setup the inode
                 strcpy(cur_path, new_dir->filename, 16);
                 // append new dir to cur_inode
-                int r = inode_write_bytes(cur_inode, -1, new_dir, sizeof(dir_entry_t));
+                int r = inode_write_bytes(cur_inode, -1, (char*) new_dir, sizeof(dir_entry_t));
                 if(r == -1){
                     return -1;
                 }
