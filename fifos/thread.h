@@ -84,25 +84,6 @@ int thread_create(void* func){
 
     tcb->esp = (uint32_t) (((uint32_t *) stack));
 
-        // ---------------
-
-    // // TODO: reset the tcb
-    // tcb->func = func;
-    // // tcb eip points to the function
-    // tcb->eip = (uint32_t)thread_func_wrapper;
-    // // tcb esp points to the stack    
-    // tcb->esp = (uint32_t)(tcb->stack + STACK_SIZE - sizeof(uint32_t));
-
-
-    // // push tcb to the stack
-    // *(((uint32_t *)tcb->esp)-0) = (uint32_t) tcb;
-
-    // // Update the esp to point to the new top of the stack
-    // tcb->esp = (uint32_t)(tcb->esp - sizeof(uint32_t));
-
-    // // put exit thread on top of thread stack so that user thread can return
-    // // *(((uint32_t *)stack)-0) = (uint32_t) exit_thread
-    // // stack = (void *) (((uint32_t *)stack)-1);
 
     ready_queue_add(tcb);
     return 0;

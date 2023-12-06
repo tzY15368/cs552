@@ -34,7 +34,7 @@ void __bitmap_set(uint8_t* bitmap, int block_num, bool bit_value){
 bool __bitmap_get(uint8_t* bitmap, int block_num){
     int byte_num = block_num / 8;
     int bit_num = block_num % 8;
-    return (bitmap[byte_num] >> bit_num) & 1;
+    return (bitmap[byte_num] & (1 << bit_num)) != 0;
 }
 
 int get_free_block(){
@@ -71,7 +71,7 @@ int get_free_inode(int inode_type){
 }
 
 listqueue_t* path_to_list(char* pathname){
-    char pathBuf[16];
+    char pathBuf[16] = {'\0'};
     int pathIdx = 0;
     listqueue_t* pathQueue = listqueue_init();
     for(int i=0;i<16;i++){
@@ -133,6 +133,9 @@ listqueue_t* get_blk_list(inode_t* inode){
     for(int i=0;i<8;i++){
         if(inode->location[i] != NULL){
             listqueue_put(blk_list, inode->location[i]);
+        } else {
+            tprintf("get_blk_ls stop on loc[%d]\n", i);
+            break;
         }
     }
     // single indirect
@@ -146,7 +149,7 @@ listqueue_t* get_blk_list(inode_t* inode){
 
 int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
     if(add_size <= 0){
-        return -1;
+        return 0;
     }
     int new_size_total = inode->size + add_size;
     // if size is smaller than current size, then we need to free blocks
@@ -166,6 +169,7 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
     if(new_size_total > (l0_size + l1_size + l2_size)){
         return -1;
     }
+    tprintf("inode_alloc_blocks: cur_blks=%d, new_blks=%d, blks_needed=%d\n", cur_blks, new_blks, blks_needed);
     // l0
     if(blks_needed > 0){
         
@@ -174,6 +178,7 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
         for(int i=cur_blks;i<new_l0_blks_max_idx;i++){
             int blk_num = get_free_block();
             if(blk_num == -1){
+                tprintf("inode_alloc_blocks l0: get_free_block failed\n");
                 return -1;
             }
             inode->location[i] = &ramfs->blocks[blk_num];
@@ -186,6 +191,7 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
         if(l1_blk == NULL){
             int blk_num = get_free_block();
             if(blk_num == -1){
+                tprintf("inode_alloc_blocks l1-1: get_free_block failed\n");
                 return -1;
             }
             l1_blk = &ramfs->blocks[blk_num];
@@ -195,6 +201,7 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
         for(uint32_t i=cur_blks-8;i<new_l1_blks_max_idx;i++){
             int blk_num = get_free_block();
             if(blk_num == -1){
+                tprintf("inode_alloc_blocks l1-2: get_free_block failed\n");
                 return -1;
             }
             l1_blk->data_byte[i*4] = blk_num;
@@ -207,6 +214,7 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
         if(l2_blk == NULL){
             int blk_num = get_free_block();
             if(blk_num == -1){
+                tprintf("inode_alloc_blocks l2-1: get_free_block failed\n");
                 return -1;
             }
             l2_blk = &ramfs->blocks[blk_num];
@@ -220,6 +228,7 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
             if(l2_blk->data_byte[l1_blk_idx*4] == NULL){
                 int blk_num = get_free_block();
                 if(blk_num == -1){
+                    tprintf("inode_alloc_blocks l2-2: get_free_block failed\n");
                     return -1;
                 }
                 l2_blk->data_byte[l1_blk_idx*4] = blk_num;
@@ -232,6 +241,7 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
             // set the block number in the l1 block
             int blk_num = get_free_block();
             if(blk_num == -1){
+                tprintf("inode_alloc_blocks l2-3: get_free_block failed\n");
                 return -1;
             }
             l1_blk->data_byte[l1_blk_offset*4] = blk_num;
@@ -239,27 +249,92 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
         }
     }
     if(blks_needed > 0){
+        tprintf("inode_alloc_blocks: blks_needed > 0\n");
         return -1;
     }
     return 0;
 }
 
-// TODO: read
-int inode_read_bytes(inode_t* inode, uint32_t pos, char* in_buf, uint32_t size){
-    return -1;
+// is_write: TRUE for write, FALSE for read
+int inode_rw_bytes(inode_t* inode, uint32_t pos, bool is_write, char* write_buf, char* read_buf, uint32_t size){
+    if((is_write && write_buf==NULL) || (!is_write && read_buf==NULL)){
+        tprintf("inode_rw_bytes: invalid params\n");
+        return -1;
+    }
+
+    listqueue_t* blk_list = get_blk_list(inode);
+    int blk_list_sz = blk_list->size;
+    int start_blk_idx = pos / RAMDISK_BLK_SIZE;
+    int start_blk_offset = pos % RAMDISK_BLK_SIZE;
+    int end_blk_idx = min((pos + size) / RAMDISK_BLK_SIZE, inode->size / RAMDISK_BLK_SIZE + inode->size % RAMDISK_BLK_SIZE == 0 ? 0 : 1);
+    int end_blk_offset = (pos+size) > inode->size? ((pos + size) % RAMDISK_BLK_SIZE) : RAMDISK_BLK_SIZE-1;
+    // skip initial locations...
+    for(int i=0; i<start_blk_idx-1; i++){
+        block_t* blk = listqueue_get(blk_list);
+        if(blk == NULL){
+            tprintf("inode_read_bytes: prepare: blk is null\n");
+            return -1;
+        }
+    }
+    tprintf("inode[%s]: start_blk_idx=%d, start_blk_offset=%d, end_blk_idx=%d, end_blk_offset=%d\n",
+     is_write?"WR":"RD", start_blk_idx, start_blk_offset, end_blk_idx, end_blk_offset);
+
+    int target_offset = 0;
+    // tprintf("write buf:%s\n", write_buf);
+    // rw from start_blk_idx
+    for(int i=start_blk_idx;i<=end_blk_idx;i++){
+        block_t* blk = listqueue_get(blk_list);
+        if(blk == NULL){
+            tprintf("inode_read_bytes: read: blk is null\n");
+            return -1;
+        }
+        int blk_start_offset = i == start_blk_idx ? start_blk_offset : 0;
+        int blk_end_offset = i == end_blk_idx ? end_blk_offset : RAMDISK_BLK_SIZE-1;
+        for(int j=blk_start_offset; j<=blk_end_offset; j++){
+            if(is_write){
+                blk->data_byte[j] = write_buf[target_offset++];
+            } else {
+                read_buf[target_offset++] = blk->data_byte[j];
+            }
+            // tprintf("<%c>", blk->data_byte[j]);
+        }
+    }
+    return 0;
 }
 
+void dump_inode_loc(inode_t* inode){
+    tprintf("inode->location: ");
+    for(int i=0;i<10;i++){
+        tprintf("%d ", inode->location[i]);
+    }
+    tprintf("\n");
+}
+
+// TODO: read
+int inode_read_bytes(inode_t* inode, uint32_t pos, char* read_buf, uint32_t size){
+    return inode_rw_bytes(inode, pos, FALSE, NULL, read_buf, size);
+}
+
+
 // TODO: returns bytes written, if -1 then fail
-int inode_write_bytes(inode_t* inode, uint32_t pos, char* out_buf, uint32_t size){
-    if(pos > inode->size){
+int inode_write_bytes(inode_t* inode, uint32_t pos, char* write_buf, uint32_t size){
+    if(pos!=-1 && pos > inode->size){
+        tprintf("inode_write_bytes: pos > inode->size\n");
         return -1;
     }
     if(pos==-1){
         pos = inode->size;
     }
+    // tprintf("write info:%s", write_buf);
     // if pos+size > inode->size, then we need to allocate more blocks
-    // TODO: implement
-    return -1;
+    int r = inode_alloc_blocks(inode, pos+size-inode->size);
+    if(r == -1) {panic(  "inode_write_bytes: inode_alloc_blocks failed\n");} 
+    // else tprintf("alloc ok\n");
+    dump_inode_loc(inode);
+    int rw = inode_rw_bytes(inode, pos, TRUE, write_buf, NULL, size);
+    if(rw == -1){panic(  "inode_write_bytes: inode_rw_bytes failed\n");} 
+    // else tprintf("rw ok\n");
+    return 0;
 }
 
 // returns fd, if successful will add this fd to the fd table
@@ -283,12 +358,15 @@ int get_new_fd(inode_t* inode){
 int dir_walk(char* pathname, bool create, int create_type){
     listqueue_t* pathQueue = path_to_list(pathname);
     int sz = pathQueue->size;
+    tprintf("dir_walk: pathlist size: %d\n", sz);
     inode_t* cur_inode = root_inode;
     for(int i=0; i<sz; i++){
+        char* cur_path = listqueue_get(pathQueue);
+        tprintf("dir_walk: current node type:%d, path: %s\n", cur_inode->type, cur_path);
         if(i!=sz-1 && cur_inode->type != INODE_TYPE_DIR){
+            tprintf("dir_walk: not a dir\n");
             return -1;
         }
-        char* cur_path = listqueue_get(pathQueue);
 
         listqueue_t* blk_list = get_blk_list(cur_inode);
         int blk_list_sz = blk_list->size;
@@ -322,11 +400,14 @@ int dir_walk(char* pathname, bool create, int create_type){
                 break;
             }
         }
+        tprintf("dir_walk: found=%d\n", found);
         if(found == FALSE && i == sz-1){
             if(!create){
+                tprintf("dir_walk: not found, not creating\n");
                 return -1;
             }
             if(create_type == INODE_TYPE_DIR){
+                tprintf("dir_walk: creating dir\n");
                 // create new dir
                 dir_entry_t* new_dir = (dir_entry_t*) malloc(sizeof(dir_entry_t));
                 new_dir->inode_num = get_free_inode(INODE_TYPE_DIR);
@@ -334,15 +415,25 @@ int dir_walk(char* pathname, bool create, int create_type){
                 strcpy(cur_path, new_dir->filename, 16);
                 // append new dir to cur_inode
                 int r = inode_write_bytes(cur_inode, -1, (char*) new_dir, sizeof(dir_entry_t));
-                if(r == -1){
-                    return -1;
-                }
+                return r == -1? -1: 0;
+                
             } else if(create_type == INODE_TYPE_REG){
-
+                tprintf("dir_walk: creating reg\n");
+                // create new file
+                dir_entry_t* new_dir = (dir_entry_t*) malloc(sizeof(dir_entry_t));
+                new_dir->inode_num = get_free_inode(INODE_TYPE_REG);
+                // setup the inode
+                strcpy(cur_path, new_dir->filename, 16);
+                // append new dir to cur_inode
+                int r = inode_write_bytes(cur_inode, -1, (char*) new_dir, sizeof(dir_entry_t));
+                return r == -1? -1: 0;
+                
             } else {
+                tprintf("bad create_type\n");
                 return -1;
             }
         } else if(found == FALSE){
+            tprintf("dir_walk: not found in dir: %s\n", cur_path);
             return -1;
         }
     }
