@@ -47,65 +47,12 @@
 #include "fs.h"
 #endif
 
+#ifndef USER_C
+#include "user.c"
+#endif
+
 static mutex_t* global_mutex;
 static cond_t* global_cond;
-
-
-void f1(){
-  tprintf("f1\n");
-  // print_esp();
-  // sleep(2000);
-  // print_eip();
-  for(int i=0;i<5;i++){
-    // mutex_lock(global_mutex);
-    tprintf("<1-%d>",i*2);
-    sleep(1000);
-    // if(i > 1){
-    //   cond_signal(global_cond);
-    // }
-    // thread_yield();
-    // mutex_unlock(global_mutex);
-  }
-  // tprintf("end of f1\n");
-}
-
-void f2(){
-  // print_esp();
-  // print_eip();
-  // mutex_lock(global_mutex);
-  // cond_wait(global_cond);
-  for(int i=0;i<5;i+=1){
-    tprintf("<2-%d>", 1+i*2);
-    sleep(1000);
-    // thread_yield();
-  }
-  // mutex_unlock(global_mutex);
-  // thread_yield();
-  // f1();
-  tprintf("end of f2\n");
-}
-
-void f3(){
-  for(int i=0;i<3;i++){
-    tprintf("<3-%d>", i);
-    sleep(500);
-  }
-}
-
-void f4(){
-  for(int i=0;i<4;i++){
-    tprintf("<4-%d>", i);
-    sleep(500);
-  }
-}
-
-void discosf1(){
-  tprintf("df1\n");
-}
-
-void discosf2(){
-  tprintf("df2\n");
-}
 
 void init( multiboot* pmb ) {
  
@@ -159,21 +106,11 @@ void init( multiboot* pmb ) {
   sched_init();
 
   tprintf("TP=%d\n", thread_pool.size);
-  tprintf("Preemption=%d",PREEMPTION_ON);
+  tprintf("Preemption=%d;",PREEMPTION_ON);
   ramdisk_init();
 
   thread_create(discosf1);
   thread_create(discosf2);
-  // thread_create(producer);  
-  // thread_create(producer);
-
-  // thread_create(consumer);
-  // thread_create(consumer);
-  
-  // thread_create(f2);
-  // thread_create(f1);
-  // thread_create(f3);
-  // thread_create(f4);
 
   start_sched();
 }

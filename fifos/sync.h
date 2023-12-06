@@ -71,7 +71,7 @@ cond_t* cond_init(mutex_t* mu){
     // halt();
     cond->mu = mu;
     cond->wait_queue = listqueue_init();
-    tprintf("cond(%d);", cond->wait_queue->id);
+    // tprintf("cond(%d);", cond->wait_queue->id);
     return cond;
 }
 

@@ -16,57 +16,6 @@
 #include "fsutils.h"
 #endif
 
-// TODO: test this
-void __bitmap_set(uint8_t* bitmap, int block_num, bool bit_value){
-    int byte_num = block_num / 8;
-    int bit_num = block_num % 8;
-    if(bit_value == TRUE){
-        bitmap[byte_num] |= (1 << bit_num);
-    }else{
-        bitmap[byte_num] &= ~(1 << bit_num);
-    }
-}
-
-// TODO: test this
-bool __bitmap_get(uint8_t* bitmap, int block_num){
-    int byte_num = block_num / 8;
-    int bit_num = block_num % 8;
-    return (bitmap[byte_num] >> bit_num) & 1;
-}
-
-int get_free_block(){
-    if(ramfs->superblock.free_blocks == 0){
-        return -1;
-    }
-    for(int i = 0; i < N_BLOCKS; i++){
-        if(!__bitmap_get(ramfs->bitmap, i)){
-            __bitmap_set(ramfs->bitmap, i, 1);
-            ramfs->superblock.free_blocks--;
-            return i;
-        }
-    }
-    return -1;
-}
-
-int get_free_inode(int inode_type){
-    if(ramfs->superblock.free_inodes == 0){
-        return -1;
-    }
-    for(int i = 0; i < N_INODES; i++){
-        if(ramfs->inode[i].in_use == FALSE){
-            ramfs->inode[i].type = inode_type;
-            ramfs->inode[i].size = 0;
-            for(int j = 0; j < 10; j++){
-                ramfs->inode[i].location[j] = NULL;
-            }
-            ramfs->inode[i].in_use = TRUE;
-            ramfs->superblock.free_inodes--;
-            return i;
-        }
-    }
-    return -1;
-}
-
 void ramdisk_init(){
     for(int i = 0; i < RAMDISK_SIZE; i++){
         ramdisk[i] = 0;
@@ -97,7 +46,7 @@ void ramdisk_init(){
         halt();
     }
 
-    tprintf("RD@%d=%dKB\n", ramdisk, RAMDISK_SIZE / 1024);
+    tprintf("RD@%d=%dKB;", ramdisk, RAMDISK_SIZE / 1024);
 }
 
 
@@ -106,17 +55,59 @@ int rd_creat(char *pathname){
     int r = dir_walk(pathname, TRUE, INODE_TYPE_REG);
     return r == -1? -1: 0;
 };
+
 int rd_mkdir(char *pathname){
     int r = dir_walk(pathname, TRUE, INODE_TYPE_DIR);
     return r == -1? -1: 0;
 }
 
-int rd_open(char *pathname, int flags);
-int rd_unlink(char *pathname);
+int rd_open(char *pathname){
+    int r = dir_walk(pathname, FALSE, -1);
+    if(r <= 0) return -1;
+    thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
+    int new_fd = get_new_fd(&ramfs->inode[r]);
+    if(new_fd == -1) return -1;
+    if(ramfs->inode[r].in_use == FALSE) return -1;
+    ramfs->inode[r].in_use = TRUE;
+    cur_tcb->fds[new_fd].inode = &ramfs->inode[r];
+    cur_tcb->fds[new_fd].in_use = TRUE;
+    cur_tcb->fds[new_fd].fd_num = new_fd;
+    cur_tcb->fds[new_fd].offset = 0;
+    return new_fd;
+}
+
+int rd_unlink(char *pathname){
+    int inode_no = dir_walk(pathname, FALSE, -1);
+    if(inode_no <= 0) return -1;
+    inode_t* inode = &ramfs->inode[inode_no];
+    if(inode->type == INODE_TYPE_DIR && inode->size != 0)return -1;
+    if(inode->in_use == FALSE) return -1;
+    
+    // free inode
+    inode->in_use = FALSE;
+    ramfs->superblock.free_inodes++;
+    // free blocks
+    listqueue_t* blk_list = get_blk_list(inode);
+    int blk_list_sz = blk_list->size;
+    for(int i=0; i<blk_list_sz; i++){
+        block_t* blk = listqueue_get(blk_list);
+        int blk_no = (blk - ramfs->blocks);
+        __bitmap_set(ramfs->bitmap, blk_no, 0);
+        ramfs->superblock.free_blocks++;
+    }
+    // reset inode
+    inode->size = 0;
+    for(int i=0; i<10; i++){
+        inode->location[i] = NULL;
+    }
+    return 0;
+}
+
 int rd_close(int fd){
     if(fd < 0) return -1;
     thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
     file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
+    file_descriptor->inode->in_use = FALSE;
     if(file_descriptor->in_use == FALSE) return -1;
     file_descriptor->in_use = FALSE;
     file_descriptor->fd_num = -1;
