@@ -8,6 +8,183 @@
 #include "utils.h"
 #endif
 
+#define MAX_FILES 1023
+#define BLK_SZ 256		/* Block size */
+#define DIRECT 8		/* Direct pointers in location attribute */
+#define PTR_SZ 4		/* 32-bit [relative] addressing */
+#define PTRS_PB  (BLK_SZ / PTR_SZ) /* Pointers per index block */
+
+static char pathname[80];
+
+static char data1[DIRECT*BLK_SZ]; /* Largest data directly accessible */
+static char data2[PTRS_PB*BLK_SZ];     /* Single indirect data size */
+static char data3[PTRS_PB*PTRS_PB*BLK_SZ]; /* Double indirect data size */
+static char addr[PTRS_PB*PTRS_PB*BLK_SZ+1]; /* Scratchpad memory */
+
+
+void test1_create(){
+  for(int i=0;i<MAX_FILES+1;i++){
+    sprintf(pathname, "/file%d", i);
+    int fd = rd_creat(pathname);
+    if(fd == -1){
+      tprintf("rd_creat failed: %d\n",i);
+      if(i!=MAX_FILES){
+        halt();
+      }
+    }
+    memset(pathname, 0, 80);
+  }
+  tprintf("rd_creat ok\n");
+  for(int i=0;i<MAX_FILES;i++){
+    sprintf(pathname, "/file%d", i);
+    int fd = rd_unlink(pathname);
+    if(fd == -1){
+      tprintf("unlink failed: %d\n",i);
+      halt();
+    }
+    memset(pathname, 0, 80);
+  }
+  tprintf("unlink ok\n");
+}
+
+// test big file write
+void test2_big_file_write(){
+  int r = rd_creat("/bigfile");
+  if(r == -1){
+    panic("rd_creat failed\n");
+  }
+  int fd = rd_open("/bigfile");
+  if(fd == -1){
+    panic("rd_open failed\n");
+  }
+  int w = rd_write(fd, data1, sizeof(data1));
+  if(w == -1){
+    panic("rd_write failed\n");
+  } else {
+    tprintf("write direct ok");
+  }
+
+  w = rd_write(fd, data2, sizeof(data2));
+  if(w == -1){
+    panic("rd_write failed\n");
+  } else {
+    tprintf("write single indirect ok");
+  }
+
+  w = rd_write(fd, data3, sizeof(data3));
+  if(w == -1){
+    panic("rd_write failed\n");
+  } else {
+    tprintf("write double indirect ok");
+  }
+
+  test3_big_file_read(fd);
+}
+
+// test big file read
+void test3_big_file_read(int fd){
+  int r = rd_lseek(fd, 0);
+  if(r == -1){
+    panic("rd_lseek failed\n");
+  }
+  int r = rd_read(fd, addr, sizeof(data1));
+  if(r == -1){
+    panic("rd_read failed\n");
+  } else {
+    tprintf("read direct ok: %s\n", addr);
+  }
+
+  r = rd_read(fd, addr, sizeof(data2));
+  if(r == -1){
+    panic("rd_read failed\n");
+  } else {
+    tprintf("read single indirect ok: %s\n", addr);
+  }
+
+  r = rd_read(fd, addr, sizeof(data3));
+  if(r == -1){
+    panic("rd_read failed\n");
+  } else {
+    tprintf("read double indirect ok: %s\n", addr);
+  }
+
+  r = rd_close(fd);
+  if(r == -1){
+    panic("rd_close failed\n");
+  }
+
+  r = rd_unlink("/bigfile");
+  if(r == -1){
+    panic("rd_unlink failed\n");
+  }
+}
+
+// test dirs
+void test4_dirs(){
+  int r = rd_mkdir("/dir1");
+  if(r == -1){
+    panic("rd_mkdir failed\n");
+  }
+
+  r = rd_mkdir("/dir1/dir2");
+  if(r == -1){
+    panic("rd_mkdir failed\n");
+  }
+
+  r = rd_mkdir("/dir1/dir3");
+  if(r == -1){
+    panic("rd_mkdir failed\n");
+  }
+
+  int fd = rd_open("/dir1");
+  if(fd == -1){
+    panic("rd_open failed\n");
+  }
+
+  dir_entry_t ent;
+  while((r = rd_readdir(fd, (char*)&ent))){
+    if(r == -1){
+      panic("rd_readdir failed\n");
+    } else if (r == 0) {
+      tprintf("readdir: EOF");
+      break;
+    } else {
+      tprintf("readdir ok: %s @ %d\n", ent.filename, ent.inode_num);
+    }
+  }
+  
+  r = rd_close(fd);
+  if(r == -1){
+    panic("rd_close failed\n");
+  }
+}
+
+// test fork
+void test5_fork(){
+  int r = fork();
+  if(r == -1){
+    panic("fork failed\n");
+  } else if(r == 0){
+    tprintf("<child>\n");
+    for(int i=0;i<10;i++){
+      sprintf(pathname, "/file-c-%d", i);
+      int ret = rd_creat(pathname);
+      if(ret == -1){
+        panic("rd_creat failed\n");
+      }
+    }
+  } else {
+    tprintf("<parent>\n");
+    for(int i=0;i<10;i++){
+      sprintf(pathname, "/file-p-%d", i);
+      int ret = rd_creat(pathname);
+      if(ret == -1){
+        panic("rd_creat failed\n");
+      }
+    }
+  }
+}
+
 void test_inode_rw(){
 
   inode_t testinode;
@@ -65,11 +242,6 @@ void discosf1(){
   tprintf("mkdir res3:%d\n", r);
 
   int fd = rd_open("/");
-  tprintf("open res:%d\n", fd);
-  tprintf("open res:%d\n", fd);
-  tprintf("open res:%d\n", fd);
-  tprintf("open res:%d\n", fd);
-  tprintf("open res:%d\n", fd);
   tprintf("open res:%d\n", fd);
   tprintf("root inode size:%d", root_inode->size);
   dir_entry_t ent;
