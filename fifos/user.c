@@ -47,6 +47,8 @@ void test1_create(){
   tprintf("unlink ok\n");
 }
 
+void test3_big_file_read(int fd);
+
 // test big file write
 void test2_big_file_write(){
   int r = rd_creat("/bigfile");
@@ -87,7 +89,7 @@ void test3_big_file_read(int fd){
   if(r == -1){
     panic("rd_lseek failed\n");
   }
-  int r = rd_read(fd, addr, sizeof(data1));
+  r = rd_read(fd, addr, sizeof(data1));
   if(r == -1){
     panic("rd_read failed\n");
   } else {
@@ -119,44 +121,52 @@ void test3_big_file_read(int fd){
   }
 }
 
+
+static dir_entry_t ent;
 // test dirs
 void test4_dirs(){
   int r = rd_mkdir("/dir1");
   if(r == -1){
-    panic("rd_mkdir failed\n");
+    panic("rd_mkdir1 failed\n");
   }
 
   r = rd_mkdir("/dir1/dir2");
   if(r == -1){
-    panic("rd_mkdir failed\n");
+    panic("rd_mkdir2 failed\n");
   }
 
   r = rd_mkdir("/dir1/dir3");
   if(r == -1){
-    panic("rd_mkdir failed\n");
+    panic("rd_mkdir3 failed\n");
   }
 
-  int fd = rd_open("/dir1");
+  const fd = rd_open("/dir1");
+  int _fd = fd;
   if(fd == -1){
-    panic("rd_open failed\n");
+    panic("rd_open4 failed\n");
   }
-
-  dir_entry_t ent;
-  while((r = rd_readdir(fd, (char*)&ent))){
+  tprintf("--%d--", fd);
+  while(1){
+    tprintf("fd:%d", _fd);
+    r = rd_readdir(_fd, (char*)&ent);
     if(r == -1){
       panic("rd_readdir failed\n");
     } else if (r == 0) {
-      tprintf("readdir: EOF");
+      tprintf("readdir: EOF\n");
       break;
     } else {
       tprintf("readdir ok: %s @ %d\n", ent.filename, ent.inode_num);
     }
   }
   
-  r = rd_close(fd);
+  r = rd_close(_fd);
   if(r == -1){
     panic("rd_close failed\n");
   }
+}
+
+int fork(){
+  return 1;
 }
 
 // test fork
@@ -231,22 +241,22 @@ void discosf1(){
   //   char* buf = listqueue_get(lq);
   //   tprintf("/%s", buf);
   // }
+  test4_dirs();
+  // int r = rd_mkdir("/dir1");
+  // tprintf("mkdir res:%d\n", r);
 
-  int r = rd_mkdir("/dir1");
-  tprintf("mkdir res:%d\n", r);
+  // r = rd_mkdir("/dir1/dir2");
+  // tprintf("mkdir res2:%d\n", r);
 
-  r = rd_mkdir("/dir1/dir2");
-  tprintf("mkdir res2:%d\n", r);
+  // r = rd_mkdir("/dir100");
+  // tprintf("mkdir res3:%d\n", r);
 
-  r = rd_mkdir("/dir100");
-  tprintf("mkdir res3:%d\n", r);
-
-  int fd = rd_open("/");
-  tprintf("open res:%d\n", fd);
-  tprintf("root inode size:%d", root_inode->size);
-  dir_entry_t ent;
-  r = rd_readdir(fd, (char*)&ent);
-  tprintf("readdir res:%d -- /%s %d\n", r, ent.filename, ent.inode_num);
+  // int fd = rd_open("/");
+  // tprintf("open res:%d\n", fd);
+  // tprintf("root inode size:%d", root_inode->size);
+  // dir_entry_t ent;
+  // r = rd_readdir(fd, (char*)&ent);
+  // tprintf("readdir res:%d -- /%s %d\n", r, ent.filename, ent.inode_num);
 
 
   // test bitmap getset

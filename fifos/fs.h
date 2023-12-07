@@ -177,7 +177,10 @@ int rd_readdir(int fd, char *address){
     if(fd < 0) return -1;
     thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
     file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
-    if(file_descriptor->in_use == FALSE) return -1;
+    if(file_descriptor->in_use == FALSE) {
+        tprintf("rd_readdir: file_descriptor->in_use == FALSE\n");
+        return -1;
+    }
     // return 1 on ok, 0 on eof, -1 on error
     if(file_descriptor->offset >= file_descriptor->inode->size) return 0;
     int r = inode_read_bytes(file_descriptor->inode, file_descriptor->offset * sizeof(dir_entry_t), address, sizeof(dir_entry_t));

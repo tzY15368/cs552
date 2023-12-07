@@ -105,7 +105,7 @@ void init( multiboot* pmb ) {
   ready_queue_init();
   sched_init();
 
-  tprintf("TP=%d\n", thread_pool.size);
+  // tprintf("TP=%d\n", thread_pool.size);
   tprintf("Preemption=%d;",PREEMPTION_ON);
   ramdisk_init();
 

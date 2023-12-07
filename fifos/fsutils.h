@@ -143,7 +143,7 @@ listqueue_t* get_blk_list(inode_t* inode){
     enumerate_single_indirect_blk(inode->location[8], blk_list);
     // double indirect
     enumerate_double_indirect_blk(inode->location[9], blk_list);
-    tprintf("[blk_list=%d] ", blk_list->size);
+    // tprintf("[blk_list=%d] ", blk_list->size);
     return blk_list;
 }
 
@@ -276,7 +276,7 @@ int inode_rw_bytes(inode_t* inode, uint32_t pos, bool is_write, char* write_buf,
             return -1;
         }
     }
-    tprintf("inode[%s]: start_blk_idx=%d, start_blk_offset=%d, end_blk_idx=%d, end_blk_offset=%d\n",
+    tprintf("inode[%s]: start_idx=%d, start_off=%d, end_idx=%d, end_off=%d\n",
      is_write?"WR":"RD", start_blk_idx, start_blk_offset, end_blk_idx, end_blk_offset);
 
     int target_offset = 0;
@@ -303,11 +303,11 @@ int inode_rw_bytes(inode_t* inode, uint32_t pos, bool is_write, char* write_buf,
 }
 
 void dump_inode_loc(inode_t* inode){
-    tprintf("inode->location: ");
-    for(int i=0;i<10;i++){
-        tprintf("%d ", inode->location[i]);
-    }
-    tprintf("\n");
+    // tprintf("inode->location: ");
+    // for(int i=0;i<10;i++){
+    //     tprintf("%d ", inode->location[i]);
+    // }
+    // tprintf("\n");
 }
 
 // TODO: read
@@ -370,7 +370,8 @@ int dir_walk(char* pathname, bool create, int create_type){
     }
     for(int i=0; i<sz; i++){
         char* cur_path = listqueue_get(pathQueue);
-        tprintf("dir_walk: inum: %d, type:%d, path: %s\n", (((inode_t*) cur_inode - root_inode) / sizeof(inode_t)), cur_inode->type, cur_path);
+        // (((inode_t*) cur_inode - root_inode) / sizeof(inode_t))
+        tprintf("dir_walk: inum: %d, type:%d, path: %s\n", cur_inode, cur_inode->type, cur_path);
         if(i!=sz-1 && cur_inode->type != INODE_TYPE_DIR){
             tprintf("dir_walk: not a dir\n");
             return -1;
@@ -392,7 +393,7 @@ int dir_walk(char* pathname, bool create, int create_type){
                     // found
                     if(i == sz-1){
                         // last one
-                        tprintf("===dir_walk: last one: %d===", dir->inode_num);
+                        // tprintf("===dir_walk: last one: %d===", dir->inode_num);
                         return dir->inode_num;
                     }
                     found = TRUE;
@@ -421,6 +422,7 @@ int dir_walk(char* pathname, bool create, int create_type){
                 // create new dir
                 dir_entry_t* new_dir = (dir_entry_t*) malloc(sizeof(dir_entry_t));
                 new_dir->inode_num = get_free_inode(create_type);
+                tprintf("got new inode num: %d for %s\n", new_dir->inode_num, cur_path);
                 // setup the inode
                 strcpy(cur_path, new_dir->filename, 16);
                 // append new dir to cur_inode
@@ -428,7 +430,7 @@ int dir_walk(char* pathname, bool create, int create_type){
                 if(r != -1) {
                     cur_inode->size += 1;
                     int cur_inode_no = ((inode_t*) cur_inode - root_inode) / sizeof(inode_t);
-                    tprintf("dir_walk: create dir ok on inode-%d, newsz=%d\n", cur_inode_no, cur_inode->size);
+                    tprintf("dir_walk: create dir ok on inode-%d, newsz=%d\n", cur_inode, cur_inode->size);
                 }
                 return r==-1? -1: new_dir->inode_num;
             } else {
