@@ -162,32 +162,38 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
     // lv2 indirect
     int l2_size = pointers_per_blk * pointers_per_blk * RAMDISK_BLK_SIZE;
 
-    int cur_blks = inode->size / RAMDISK_BLK_SIZE + inode->size % RAMDISK_BLK_SIZE == 0 ? 0 : 1;
-    int new_blks = new_size_total / RAMDISK_BLK_SIZE + new_size_total % RAMDISK_BLK_SIZE == 0 ? 0 : 1;
-    int blks_needed = new_blks - cur_blks;
-
+    int cur_blks = inode->size / RAMDISK_BLK_SIZE + (inode->size % RAMDISK_BLK_SIZE == 0 ? 0 : 1);
+    int new_tot_blks = new_size_total / RAMDISK_BLK_SIZE + (new_size_total % RAMDISK_BLK_SIZE == 0 ? 0 : 1);
+    int blks_needed = new_tot_blks - cur_blks;
+    if(new_tot_blks > 8 + pointers_per_blk + pointers_per_blk * pointers_per_blk){
+        tprintf("inode_alloc_blocks: new_tot_blks > 8 + pointers_per_blk + pointers_per_blk * pointers_per_blk\n");
+        return -1;
+    }
 
     if(new_size_total > (l0_size + l1_size + l2_size)){
         return -1;
     }
-    // tprintf("inode_alloc_blocks: cur_blks=%d, new_blks=%d, blks_needed=%d\n", cur_blks, new_blks, blks_needed);
+    tprintf("inode_alloc_blocks(%d): cur_blks=%d, new_tot_blks=%d, blks_needed=%d\n", new_size_total, cur_blks, new_tot_blks, blks_needed);
     // l0
     if(blks_needed > 0){
         
-        int new_l0_blks_max_idx = min(new_blks, 8);
+        int new_l0_blks_max_idx = min(new_tot_blks, 8);
         
-        for(int i=cur_blks;i<new_l0_blks_max_idx;i++){
+        for(int i=cur_blks;i<new_l0_blks_max_idx && blks_needed > 0;i++){
             int blk_num = get_free_block();
             if(blk_num == -1){
                 tprintf("inode_alloc_blocks l0: get_free_block failed\n");
                 return -1;
             }
             inode->location[i] = &ramfs->blocks[blk_num];
+            tprintf("alloc(%d) ", blk_num);
             blks_needed--;
         }
+        tprintf("\n");
     }
     // l1
     if(blks_needed > 0){
+        tprintf("(l1 needed)");
         block_t* l1_blk = inode->location[8];
         if(l1_blk == NULL){
             int blk_num = get_free_block();
@@ -197,20 +203,25 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
             }
             l1_blk = &ramfs->blocks[blk_num];
             inode->location[8] = l1_blk;
+            tprintf("alloc-l1(%d) ", blk_num);
         }
-        int new_l1_blks_max_idx = min(new_blks, 8 + pointers_per_blk);
-        for(uint32_t i=cur_blks-8;i<new_l1_blks_max_idx;i++){
+        int new_l1_blks_max_idx = min(new_tot_blks, 8 + pointers_per_blk);
+        tprintf("new_l1_blks_max_idx=%d\n", new_l1_blks_max_idx);
+        for(uint32_t i=0;i<new_l1_blks_max_idx-8 && blks_needed > 0;i++){
             int blk_num = get_free_block();
             if(blk_num == -1){
                 tprintf("inode_alloc_blocks l1-2: get_free_block failed\n");
                 return -1;
             }
+            // tprintf("AL1(%d)", blk_num);
             l1_blk->data_byte[i*4] = blk_num;
             blks_needed--;
         }
+        tprintf("\n");
     }
     // l2
     if(blks_needed > 0){
+        tprintf("(l2 needed)");
         block_t* l2_blk = inode->location[9];
         if(l2_blk == NULL){
             int blk_num = get_free_block();
@@ -220,9 +231,10 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
             }
             l2_blk = &ramfs->blocks[blk_num];
             inode->location[9] = l2_blk;
+            tprintf("alloc-l2-0(%d) ", blk_num);
         }
-        int new_l2_blks_max_idx = min(new_blks, 8 + pointers_per_blk + pointers_per_blk * pointers_per_blk);
-        for(uint32_t i=cur_blks-8-pointers_per_blk;i<new_l2_blks_max_idx;i++){
+        int new_l2_blks_max_idx = new_tot_blks;
+        for(uint32_t i=8+pointers_per_blk;i<new_l2_blks_max_idx && blks_needed > 0;i++){
             // first calculate which l1 block this block should be in
             int l1_blk_idx = (i - 8 - pointers_per_blk) / pointers_per_blk;
             // make sure there's a l1 block
@@ -233,6 +245,7 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
                     return -1;
                 }
                 l2_blk->data_byte[l1_blk_idx*4] = blk_num;
+                tprintf("alloc-l2-1(%d) ", blk_num);
             }
             // get the l1 block
             int l1_blk_num = l2_blk->data_byte[l1_blk_idx*4];
@@ -245,6 +258,7 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
                 tprintf("inode_alloc_blocks l2-3: get_free_block failed\n");
                 return -1;
             }
+            tprintf("alloc-l2-2(%d), l1-blk-idx=%d, l1-blk-offsest=%d\n", blk_num, l1_blk_idx, l1_blk_offset);
             l1_blk->data_byte[l1_blk_offset*4] = blk_num;
             blks_needed--;
         }
@@ -253,21 +267,26 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
         tprintf("inode_alloc_blocks: blks_needed > 0\n");
         return -1;
     }
+    tprintf("\n");
     return 0;
 }
 
-// is_write: TRUE for write, FALSE for read
+// is_write: TRUE for write, FALSE for read, assumes we have enough blocks for rw, and size is valid
 int inode_rw_bytes(inode_t* inode, uint32_t pos, bool is_write, char* write_buf, char* read_buf, uint32_t size){
     if((is_write && write_buf==NULL) || (!is_write && read_buf==NULL)){
         tprintf("inode_rw_bytes: invalid params\n");
+        return -1;
+    }
+    if(pos > inode->size){
+        tprintf("inode_rw_bytes: pos > inode->size\n");
         return -1;
     }
 
     listqueue_t* blk_list = get_blk_list(inode);
     int start_blk_idx = pos / RAMDISK_BLK_SIZE;
     int start_blk_offset = pos % RAMDISK_BLK_SIZE;
-    int end_blk_idx = min((pos + size) / RAMDISK_BLK_SIZE, inode->size / RAMDISK_BLK_SIZE + inode->size % RAMDISK_BLK_SIZE == 0 ? 0 : 1);
-    int end_blk_offset = (pos+size) > inode->size? ((pos + size) % RAMDISK_BLK_SIZE) : RAMDISK_BLK_SIZE-1;
+    int end_blk_idx = (pos+size) / RAMDISK_BLK_SIZE + ((pos+size) % RAMDISK_BLK_SIZE == 0 ? 0 : 1) - 1;
+    int end_blk_offset = (pos + size) % RAMDISK_BLK_SIZE;
     // skip initial locations...
     for(int i=0; i<start_blk_idx-1; i++){
         block_t* blk = listqueue_get(blk_list);
@@ -288,16 +307,19 @@ int inode_rw_bytes(inode_t* inode, uint32_t pos, bool is_write, char* write_buf,
             tprintf("inode_read_bytes: read: blk is null\n");
             return -1;
         }
-        int blk_start_offset = i == start_blk_idx ? start_blk_offset : 0;
-        int blk_end_offset = i == end_blk_idx ? end_blk_offset : RAMDISK_BLK_SIZE-1;
+        int blk_start_offset = (i == start_blk_idx ? start_blk_offset : 0);
+        int blk_end_offset = (i == end_blk_idx ? end_blk_offset : RAMDISK_BLK_SIZE-1);
         for(int j=blk_start_offset; j<=blk_end_offset; j++){
             if(is_write){
-                blk->data_byte[j] = write_buf[target_offset++];
+                blk->data_byte[j] = write_buf[target_offset];
+                target_offset++;
             } else {
                 read_buf[target_offset++] = blk->data_byte[j];
             }
-            // tprintf("<%c>", blk->data_byte[j]);
         }
+    }
+    if(is_write){
+        inode->size = max(inode->size, pos+size);
     }
     return 0;
 }
@@ -312,7 +334,9 @@ void dump_inode_loc(inode_t* inode){
 
 // TODO: read
 int inode_read_bytes(inode_t* inode, uint32_t pos, char* read_buf, uint32_t size){
-    return inode_rw_bytes(inode, pos, FALSE, NULL, read_buf, size);
+    uint32_t actual_size = min(size, max(inode->size - pos, 0));
+    tprintf("inode_read_bytes: actual_size=%d, inodesize=%d\n", actual_size, inode->size);
+    return inode_rw_bytes(inode, pos, FALSE, NULL, read_buf, actual_size);
 }
 
 
@@ -338,6 +362,7 @@ int inode_write_bytes(inode_t* inode, uint32_t pos, char* write_buf, uint32_t si
     int rw = inode_rw_bytes(inode, pos, TRUE, write_buf, NULL, size);
     if(rw == -1){panic(  "inode_write_bytes: inode_rw_bytes failed\n");} 
     // else tprintf("rw ok\n");
+
     return 0;
 }
 

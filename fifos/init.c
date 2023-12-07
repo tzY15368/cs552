@@ -108,6 +108,7 @@ void init( multiboot* pmb ) {
   // tprintf("TP=%d\n", thread_pool.size);
   tprintf("Preemption=%d;",PREEMPTION_ON);
   ramdisk_init();
+  data_init();
 
   thread_create(discosf1);
   thread_create(discosf2);

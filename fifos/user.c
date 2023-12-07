@@ -21,6 +21,17 @@ static char data2[PTRS_PB*BLK_SZ];     /* Single indirect data size */
 static char data3[PTRS_PB*PTRS_PB*BLK_SZ]; /* Double indirect data size */
 static char addr[PTRS_PB*PTRS_PB*BLK_SZ+1]; /* Scratchpad memory */
 
+void data_init(){
+  for(int i=0; i<sizeof(data1); i++){
+    data1[i] = '0' + i%8;
+  }
+  for(int i=0; i<sizeof(data2); i++){
+    data2[i] = '0' + i%8;
+  }
+  for(int i=0; i<sizeof(data3); i++){
+    data3[i] = '0' + i%8;
+  }
+}
 
 void test1_create(){
   for(int i=0;i<MAX_FILES+1;i++){
@@ -233,6 +244,34 @@ void test_inode_rw(){
 }
 
 void discosf1(){
+  int r = rd_creat("/file1");
+  if(r == -1){
+    panic("rd_create failed\n");
+  }
+
+  int fd = rd_open("/file1");
+  if(fd == -1){
+    panic("rd_open failed\n");
+  }
+  tprintf(">>>>>>");
+
+  int w = rd_write(fd, data1, 72*256 + 2*256 + 10);
+  if(w == -1){
+    panic("rd_write failed\n");
+  }
+
+  r = rd_lseek(fd, 0);
+  if(r == -1){
+    panic("rd_lseek failed\n");
+  }
+
+  char buf[270];
+  int r2 = rd_read(fd, buf, 72*256 + 10);
+  if(r2 == -1){
+    panic("rd_read failed\n");
+  }
+  buf[260] = '\0';
+  tprintf("read: %s\n", buf+240);
   // tprintf("df1\n");
   // listqueue_t* lq = path_to_list("/dir1");
   // tprintf("q len:%d\n", lq->size);
@@ -241,7 +280,7 @@ void discosf1(){
   //   char* buf = listqueue_get(lq);
   //   tprintf("/%s", buf);
   // }
-  test4_dirs();
+  // test4_dirs();
   // int r = rd_mkdir("/dir1");
   // tprintf("mkdir res:%d\n", r);
 

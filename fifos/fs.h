@@ -145,6 +145,7 @@ int rd_read(int fd, char *address, int num_bytes){
     thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
     file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
     if(file_descriptor->in_use == FALSE) return -1;
+    if(file_descriptor->inode->type == INODE_TYPE_DIR) return -1;
     int r = inode_read_bytes(file_descriptor->inode, file_descriptor->offset, address, num_bytes);
     if(r == -1){
         return -1;
@@ -157,6 +158,7 @@ int rd_write(int fd, char *address, int num_bytes){
     thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
     file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
     if(file_descriptor->in_use == FALSE) return -1;
+    if(file_descriptor->inode->type == INODE_TYPE_DIR) return -1;
     int r = inode_write_bytes(file_descriptor->inode, file_descriptor->offset, address, num_bytes);
     if(r == -1){
         return -1;
