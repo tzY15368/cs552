@@ -63,6 +63,7 @@ int get_free_inode(int inode_type){
                 ramfs->inode[i].location[j] = NULL;
             }
             ramfs->inode[i].in_use = TRUE;
+            ramfs->inode[i].ref_cnt = 0;
             ramfs->superblock.free_inodes--;
             return i;
         }
@@ -110,7 +111,7 @@ void enumerate_single_indirect_blk(block_t* blk, listqueue_t* blk_list){
     for(int i=0; i<RAMDISK_BLK_SIZE; i+=4){
         int blk_num = (int) blk->data_byte[i];
         block_t* blk = &ramfs->blocks[blk_num];
-        if(blk_num != 0){
+        if(blk_num != NULL){
             listqueue_put(blk_list, blk);
         }
     }
@@ -134,7 +135,7 @@ listqueue_t* get_blk_list(inode_t* inode){
         if(inode->location[i] != NULL){
             listqueue_put(blk_list, inode->location[i]);
         } else {
-            tprintf("get_blk_ls stop on loc[%d]\n", i);
+            // tprintf("get_blk_ls stop on loc[%d]\n", i);
             break;
         }
     }
@@ -142,7 +143,7 @@ listqueue_t* get_blk_list(inode_t* inode){
     enumerate_single_indirect_blk(inode->location[8], blk_list);
     // double indirect
     enumerate_double_indirect_blk(inode->location[9], blk_list);
-    
+    tprintf("[blk_list=%d] ", blk_list->size);
     return blk_list;
 }
 
@@ -169,7 +170,7 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
     if(new_size_total > (l0_size + l1_size + l2_size)){
         return -1;
     }
-    tprintf("inode_alloc_blocks: cur_blks=%d, new_blks=%d, blks_needed=%d\n", cur_blks, new_blks, blks_needed);
+    // tprintf("inode_alloc_blocks: cur_blks=%d, new_blks=%d, blks_needed=%d\n", cur_blks, new_blks, blks_needed);
     // l0
     if(blks_needed > 0){
         
@@ -323,7 +324,11 @@ int inode_write_bytes(inode_t* inode, uint32_t pos, char* write_buf, uint32_t si
         return -1;
     }
     if(pos==-1){
-        pos = inode->size;
+        if(inode->type == INODE_TYPE_DIR){
+            pos = inode->size * sizeof(dir_entry_t);
+        } else {
+            pos = inode->size;
+        }
     }
     // tprintf("write info:%s", write_buf);
     // if pos+size > inode->size, then we need to allocate more blocks
@@ -340,7 +345,7 @@ int inode_write_bytes(inode_t* inode, uint32_t pos, char* write_buf, uint32_t si
 // returns fd, if successful will add this fd to the fd table
 int get_new_fd(inode_t* inode){
     thread_ctl_blk_t* tcb = get_current_tcb(TRUE);
-    for(int i=0; i < FDS_PER_THREAD; i++){
+    for(int i=1; i < FDS_PER_THREAD; i++){
         if(tcb->fds[i].in_use == FALSE){
             tcb->fds[i].in_use = TRUE;
             tcb->fds[i].inode = inode;
@@ -354,15 +359,19 @@ int get_new_fd(inode_t* inode){
 
 // /abc/def/c 
 
-// if create is false, ignore create_type, returns: -1 for not found, >0 for inode_num
+// if create is false, ignore create_type, returns: -1 for not found, >=0 for inode_num
 int dir_walk(char* pathname, bool create, int create_type){
     listqueue_t* pathQueue = path_to_list(pathname);
     int sz = pathQueue->size;
-    tprintf("dir_walk: pathlist size: %d\n", sz);
+    // tprintf("dir_walk: pathlist size: %d\n", sz);
     inode_t* cur_inode = root_inode;
+    if(strcmp(pathname, "/", 2) == TRUE){
+        // tprintf("reading on root, returning root inode");
+        return 0;
+    }
     for(int i=0; i<sz; i++){
         char* cur_path = listqueue_get(pathQueue);
-        tprintf("dir_walk: current node type:%d, path: %s\n", cur_inode->type, cur_path);
+        tprintf("dir_walk: inum: %d, type:%d, path: %s\n", (((inode_t*) cur_inode - root_inode) / sizeof(inode_t)), cur_inode->type, cur_path);
         if(i!=sz-1 && cur_inode->type != INODE_TYPE_DIR){
             tprintf("dir_walk: not a dir\n");
             return -1;
@@ -371,6 +380,7 @@ int dir_walk(char* pathname, bool create, int create_type){
         listqueue_t* blk_list = get_blk_list(cur_inode);
         int blk_list_sz = blk_list->size;
         int max_iter = cur_inode->size;
+        // tprintf("dir_walk: blk_list size on path %s : %d\n", cur_path, blk_list_sz);
         bool found = FALSE;
         for(int j=0; j<blk_list_sz; j++){
             block_t* blk = listqueue_get(blk_list);
@@ -383,9 +393,11 @@ int dir_walk(char* pathname, bool create, int create_type){
                     // found
                     if(i == sz-1){
                         // last one
+                        tprintf("===dir_walk: last one: %d===", dir->inode_num);
                         return dir->inode_num;
                     }
                     found = TRUE;
+                    tprintf("--nxt num: %d--", dir->inode_num);
                     cur_inode = &ramfs->inode[dir->inode_num];
                     shouldBreak = TRUE;
                     break;
@@ -400,34 +412,26 @@ int dir_walk(char* pathname, bool create, int create_type){
                 break;
             }
         }
-        tprintf("dir_walk: found=%d\n", found);
+        tprintf("<dir_walk: found=%d> ", found);
         if(found == FALSE && i == sz-1){
             if(!create){
                 tprintf("dir_walk: not found, not creating\n");
                 return -1;
             }
-            if(create_type == INODE_TYPE_DIR){
-                tprintf("dir_walk: creating dir\n");
+            if(create_type == INODE_TYPE_DIR || create_type==INODE_TYPE_REG){
                 // create new dir
                 dir_entry_t* new_dir = (dir_entry_t*) malloc(sizeof(dir_entry_t));
-                new_dir->inode_num = get_free_inode(INODE_TYPE_DIR);
+                new_dir->inode_num = get_free_inode(create_type);
                 // setup the inode
                 strcpy(cur_path, new_dir->filename, 16);
                 // append new dir to cur_inode
                 int r = inode_write_bytes(cur_inode, -1, (char*) new_dir, sizeof(dir_entry_t));
-                return r == -1? -1: 0;
-                
-            } else if(create_type == INODE_TYPE_REG){
-                tprintf("dir_walk: creating reg\n");
-                // create new file
-                dir_entry_t* new_dir = (dir_entry_t*) malloc(sizeof(dir_entry_t));
-                new_dir->inode_num = get_free_inode(INODE_TYPE_REG);
-                // setup the inode
-                strcpy(cur_path, new_dir->filename, 16);
-                // append new dir to cur_inode
-                int r = inode_write_bytes(cur_inode, -1, (char*) new_dir, sizeof(dir_entry_t));
-                return r == -1? -1: 0;
-                
+                if(r != -1) {
+                    cur_inode->size += 1;
+                    int cur_inode_no = ((inode_t*) cur_inode - root_inode) / sizeof(inode_t);
+                    tprintf("dir_walk: create dir ok on inode-%d, newsz=%d\n", cur_inode_no, cur_inode->size);
+                }
+                return r==-1? -1: new_dir->inode_num;
             } else {
                 tprintf("bad create_type\n");
                 return -1;
@@ -437,5 +441,6 @@ int dir_walk(char* pathname, bool create, int create_type){
             return -1;
         }
     }
+    tprintf("bad state\n");
     return -1;
 }

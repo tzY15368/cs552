@@ -178,7 +178,7 @@ void terminal_putentryat(char c, uint8_t color, size_t x, size_t y)
   const size_t index = y * VGA_WIDTH + x;
   terminal_buffer[index] = make_vgaentry(c, color);
 }
- 
+
 void terminal_putchar(char c)
 {
   terminal_putentryat(c, terminal_color, terminal_column, terminal_row);
@@ -263,6 +263,15 @@ void tprintf(const char* fmt, ...) {
 void halt(){
   tprintf("halt\n");
   while(1);
+}
+
+
+void panic(const char* fmt, ...){
+  va_list args;
+  va_start(args, fmt);
+  tprintf(fmt, args);
+  va_end(args);
+  halt();
 }
 
 static inline void outb(uint16_t port, uint8_t val)

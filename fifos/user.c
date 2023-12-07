@@ -4,6 +4,9 @@
 #include "utils.h"
 #endif
 
+#ifndef UTILS_H
+#include "utils.h"
+#endif
 
 void test_inode_rw(){
 
@@ -43,17 +46,36 @@ void test_inode_rw(){
 }
 
 void discosf1(){
-  tprintf("df1\n");
-  listqueue_t* lq = path_to_list("/dir1");
-  tprintf("q len:%d\n", lq->size);
-  int size = lq->size;
-  for(int i=0;i<size;i++){
-    char* buf = listqueue_get(lq);
-    tprintf("/%s", buf);
-  }
+  // tprintf("df1\n");
+  // listqueue_t* lq = path_to_list("/dir1");
+  // tprintf("q len:%d\n", lq->size);
+  // int size = lq->size;
+  // for(int i=0;i<size;i++){
+  //   char* buf = listqueue_get(lq);
+  //   tprintf("/%s", buf);
+  // }
 
   int r = rd_mkdir("/dir1");
   tprintf("mkdir res:%d\n", r);
+
+  r = rd_mkdir("/dir1/dir2");
+  tprintf("mkdir res2:%d\n", r);
+
+  r = rd_mkdir("/dir100");
+  tprintf("mkdir res3:%d\n", r);
+
+  int fd = rd_open("/");
+  tprintf("open res:%d\n", fd);
+  tprintf("open res:%d\n", fd);
+  tprintf("open res:%d\n", fd);
+  tprintf("open res:%d\n", fd);
+  tprintf("open res:%d\n", fd);
+  tprintf("open res:%d\n", fd);
+  tprintf("root inode size:%d", root_inode->size);
+  dir_entry_t ent;
+  r = rd_readdir(fd, (char*)&ent);
+  tprintf("readdir res:%d -- /%s %d\n", r, ent.filename, ent.inode_num);
+
 
   // test bitmap getset
   // uint8_t* bitmap[2];

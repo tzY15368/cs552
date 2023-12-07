@@ -39,6 +39,8 @@ void ramdisk_init(){
     root_inode->type = INODE_TYPE_DIR;
     root_inode->size = 0;
     root_inode->location[0] = &ramfs->blocks[0];
+    root_inode->in_use = TRUE;
+    root_inode->ref_cnt = 0;
     // setup bitmap for block 0 to "using"
     int blk_0 = get_free_block();
     if(blk_0 != 0){
@@ -63,12 +65,21 @@ int rd_mkdir(char *pathname){
 
 int rd_open(char *pathname){
     int r = dir_walk(pathname, FALSE, -1);
-    if(r <= 0) return -1;
+    if(r < 0) {
+        tprintf("rd_open: dir_walk failed\n");
+        return -1;
+    }
     thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
     int new_fd = get_new_fd(&ramfs->inode[r]);
-    if(new_fd == -1) return -1;
-    if(ramfs->inode[r].in_use == FALSE) return -1;
-    ramfs->inode[r].in_use = TRUE;
+    if(new_fd == -1) {
+        tprintf("rd_open: get_new_fd failed\n");
+        return -1;
+    }
+    if(ramfs->inode[r].ref_cnt > 0) {
+        tprintf("rd_open: inode in use\n");
+        return -1;
+    }
+    ramfs->inode[r].ref_cnt++;
     cur_tcb->fds[new_fd].inode = &ramfs->inode[r];
     cur_tcb->fds[new_fd].in_use = TRUE;
     cur_tcb->fds[new_fd].fd_num = new_fd;
@@ -107,7 +118,7 @@ int rd_close(int fd){
     if(fd < 0) return -1;
     thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
     file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
-    file_descriptor->inode->in_use = FALSE;
+    file_descriptor->inode->ref_cnt--;
     if(file_descriptor->in_use == FALSE) return -1;
     file_descriptor->in_use = FALSE;
     file_descriptor->fd_num = -1;
@@ -147,7 +158,7 @@ int rd_readdir(int fd, char *address){
     if(file_descriptor->in_use == FALSE) return -1;
     // return 1 on ok, 0 on eof, -1 on error
     if(file_descriptor->offset >= file_descriptor->inode->size) return 0;
-    int r = inode_read_bytes(file_descriptor->inode, file_descriptor->offset, address, sizeof(dir_entry_t));
+    int r = inode_read_bytes(file_descriptor->inode, file_descriptor->offset * sizeof(dir_entry_t), address, sizeof(dir_entry_t));
     if(r == -1) return -1;
     file_descriptor->offset += 1;
     return 1;

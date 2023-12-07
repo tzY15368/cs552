@@ -92,7 +92,8 @@ typedef struct inode{
     uint32_t size; 			// 4B
     block_t* location[10]; 	// 40B, first 8: direct, 9th: single indirect, 10th: double indirect
     uint8_t in_use;         // 8B, 0 for not in use, 1 for in use
-    uint8_t pad[8];              // 8B
+    uint8_t ref_cnt;        // 8B
+    // uint8_t pad[8];              // 8B
 } __attribute__((packed)) inode_t; // must be 64B
 
 typedef struct dir_entry{
