@@ -265,6 +265,50 @@ void halt(){
   while(1);
 }
 
+void sprintf(char* buf, char* fmt, ...){
+  const char* p = fmt;
+  char c;
+
+  va_list args;
+  char tmp_buf[12];  // Maximum int length
+
+  va_start(args, fmt);
+
+  int i = 0;
+  while ((c = *p++)) {
+      if (c != '%') {
+          buf[i++] = c;
+      } else {
+          c = *p++;
+          switch (c) {
+              case 'c':
+                  buf[i++] = va_arg(args, int);
+                  break;
+              case 's':
+                  strcpy(va_arg(args, const char*), &buf[i], 12);
+                  i += 12;
+                  break;
+              case 'd':
+                  itoa(tmp_buf, 'd', va_arg(args, int));
+                  strcpy(tmp_buf, &buf[i], 12);
+                  i += 12;
+                  break;
+              default:
+                  buf[i++] = '%';
+                  buf[i++] = c;
+                  break;
+          }
+      }
+  }
+  buf[i] = '\0';
+  va_end(args);
+}
+
+void memset(void* buf, int val, int size){
+  for(int i=0; i<size; i++){
+    ((char*)buf)[i] = val;
+  }
+}
 
 void panic(const char* fmt, ...){
   va_list args;

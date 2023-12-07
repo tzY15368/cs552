@@ -264,7 +264,6 @@ int inode_rw_bytes(inode_t* inode, uint32_t pos, bool is_write, char* write_buf,
     }
 
     listqueue_t* blk_list = get_blk_list(inode);
-    int blk_list_sz = blk_list->size;
     int start_blk_idx = pos / RAMDISK_BLK_SIZE;
     int start_blk_offset = pos % RAMDISK_BLK_SIZE;
     int end_blk_idx = min((pos + size) / RAMDISK_BLK_SIZE, inode->size / RAMDISK_BLK_SIZE + inode->size % RAMDISK_BLK_SIZE == 0 ? 0 : 1);
@@ -443,4 +442,23 @@ int dir_walk(char* pathname, bool create, int create_type){
     }
     tprintf("bad state\n");
     return -1;
+}
+
+int dir_inode_unlink(char* parent_name, char* fname){
+    int parent_dir_inode = dir_walk(parent_name, FALSE, -1);
+    if(parent_dir_inode == -1) return -1;
+    // first pass finds the last entry and removes it from the block
+    inode_t* parent_dir = &ramfs->inode[parent_dir_inode];
+    listqueue_t* parent_dir_blk_list = get_blk_list(parent_dir);
+    int parent_dir_blk_list_sz = parent_dir_blk_list->size;
+    // move the last entry to the deleted entry
+    block_t* last_blk;
+    dir_entry_t* last_entry;
+    for(int i=0;i<parent_dir_blk_list_sz;i++){
+        last_blk = (block_t*)listqueue_get(parent_dir_blk_list);
+    }
+    int entry_index = (parent_dir->size / sizeof(dir_entry_t)) % (sizeof(block_t) / sizeof(dir_entry_t)) - 1;
+    last_entry = (dir_entry_t*)last_blk->data_byte + entry_index * sizeof(dir_entry_t);
+    // second pass finds the deleted entry if it's not the last one, and move the last entry to the deleted entry
+    // if()
 }

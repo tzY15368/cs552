@@ -88,11 +88,14 @@ int rd_open(char *pathname){
 }
 
 int rd_unlink(char *pathname){
+    if(pathname[0] != '/') return -1;
+    if(pathname[1] == '\0') return -1;
+
     int inode_no = dir_walk(pathname, FALSE, -1);
     if(inode_no <= 0) return -1;
     inode_t* inode = &ramfs->inode[inode_no];
     if(inode->type == INODE_TYPE_DIR && inode->size != 0)return -1;
-    if(inode->in_use == FALSE) return -1;
+    if(inode->ref_cnt != 0) return -1;
     
     // free inode
     inode->in_use = FALSE;
@@ -111,7 +114,18 @@ int rd_unlink(char *pathname){
     for(int i=0; i<10; i++){
         inode->location[i] = NULL;
     }
-    return 0;
+    inode->ref_cnt = 0;
+
+    char parentPath[16];
+    char filename[16];
+    int slash_cnt = 0;
+    for(int i=0; i<16; i++){
+        if(pathname[i] == '/') slash_cnt++;
+    }
+    
+    // TODO: finish this
+
+    return dir_inode_unlink(parentPath, filename);
 }
 
 int rd_close(int fd){
@@ -132,6 +146,10 @@ int rd_read(int fd, char *address, int num_bytes){
     file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
     if(file_descriptor->in_use == FALSE) return -1;
     int r = inode_read_bytes(file_descriptor->inode, file_descriptor->offset, address, num_bytes);
+    if(r == -1){
+        return -1;
+    }
+    file_descriptor->offset = min(file_descriptor->offset + num_bytes, file_descriptor->inode->size);
     return r;
 }
 int rd_write(int fd, char *address, int num_bytes){
@@ -140,6 +158,10 @@ int rd_write(int fd, char *address, int num_bytes){
     file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
     if(file_descriptor->in_use == FALSE) return -1;
     int r = inode_write_bytes(file_descriptor->inode, file_descriptor->offset, address, num_bytes);
+    if(r == -1){
+        return -1;
+    }
+    file_descriptor->offset += num_bytes;
     return r;
 }
 int rd_lseek(int fd, int offset){
@@ -149,7 +171,7 @@ int rd_lseek(int fd, int offset){
     if(file_descriptor->in_use == FALSE) return -1;
     if(offset < 0 || offset > file_descriptor->inode->size) return -1;
     file_descriptor->offset = offset;
-    return 0;
+    return offset;
 }
 int rd_readdir(int fd, char *address){
     if(fd < 0) return -1;
