@@ -160,6 +160,7 @@ int rd_read(int fd, char *address, int num_bytes){
 }
 int rd_write(int fd, char *address, int num_bytes){
     if(fd < 0) return -1;
+    tprintf("n bytes: %d\n", num_bytes);
     thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
     file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
     if(file_descriptor->in_use == FALSE) return -1;

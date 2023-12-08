@@ -25,12 +25,17 @@ void data_init(){
   for(int i=0; i<sizeof(data1); i++){
     data1[i] = '0' + i%8;
   }
+  data1[sizeof(data1)-1] = '\0';
+
   for(int i=0; i<sizeof(data2); i++){
     data2[i] = '0' + i%8;
   }
+  data2[sizeof(data2)-1] = 'B';
+
   for(int i=0; i<sizeof(data3); i++){
     data3[i] = '0' + i%8;
   }
+  data3[sizeof(data3)-1] = 'C';
 }
 
 void test1_create(){
@@ -83,6 +88,8 @@ void test2_big_file_write(){
   } else {
     tprintf("write single indirect ok");
   }
+  
+  cls();
 
   w = rd_write(fd, data3, sizeof(data3));
   if(w == -1){
@@ -90,7 +97,7 @@ void test2_big_file_write(){
   } else {
     tprintf("write double indirect ok");
   }
-
+  cls();
   test3_big_file_read(fd);
 }
 
@@ -104,21 +111,22 @@ void test3_big_file_read(int fd){
   if(r == -1){
     panic("rd_read failed\n");
   } else {
-    tprintf("read direct ok: %s\n", addr);
+    tprintf("read direct ok: %s\n", addr[sizeof(data1)-10]);
   }
-
+cls();
   r = rd_read(fd, addr, sizeof(data2));
   if(r == -1){
     panic("rd_read failed\n");
   } else {
-    tprintf("read single indirect ok: %s\n", addr);
+    tprintf("read single indirect ok: %d\n", strlen2(addr, sizeof(data2)+100));
   }
 
+cls();
   r = rd_read(fd, addr, sizeof(data3));
   if(r == -1){
     panic("rd_read failed\n");
   } else {
-    tprintf("read double indirect ok: %s\n", addr);
+    tprintf("read double indirect ok: %d\n", strlen2(addr, sizeof(data3)+100));
   }
 
   r = rd_close(fd);
@@ -244,6 +252,8 @@ void test_inode_rw(){
 }
 
 void discosf1(){
+  test2_big_file_write();
+
   // int r = rd_creat("/file1");
   // if(r == -1){
   //   panic("rd_create failed\n");
@@ -255,7 +265,7 @@ void discosf1(){
   // }
   // tprintf(">>>>>>");
 
-  // int w = rd_write(fd, data1, 72*256 + 2*256 + 10);
+  // int w = rd_write(fd, data3, 8*256 + 64*256 + 64*64*256);
   // if(w == -1){
   //   panic("rd_write failed\n");
   // }
@@ -264,9 +274,9 @@ void discosf1(){
   // if(r == -1){
   //   panic("rd_lseek failed\n");
   // }
-
+  // tprintf("<<<<<<");
   // char buf[270];
-  // int r2 = rd_read(fd, buf, 72*256 + 10);
+  // int r2 = rd_read(fd, buf, 270);
   // if(r2 == -1){
   //   panic("rd_read failed\n");
   // }
@@ -282,7 +292,7 @@ void discosf1(){
   //   char* buf = listqueue_get(lq);
   //   tprintf("/%s", buf);
   // }
-  test4_dirs();
+  // test4_dirs();
   // int r = rd_mkdir("/dir1");
   // tprintf("mkdir res:%d\n", r);
 

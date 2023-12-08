@@ -167,7 +167,12 @@ void terminal_initialize()
 	}
     }
 }
- 
+
+void cls(){
+  terminal_initialize();
+
+}
+
 void terminal_setcolor(uint8_t color)
 {
   terminal_color = color;
@@ -342,4 +347,15 @@ static inline void io_wait(void)
      //The Linux kernel seems to think it is free for use :-/ 
     __asm__ volatile ( "outb %%al, $0x80" : : "a"(0) );
  //    %%al instead of %0 makes no difference.  TODO: does the register need to be zeroed? 
+}
+
+int strlen2(char* str, int max_iter){
+  int i = 0;
+  while(str[i] != '\0'){
+    i++;
+    if(i >= max_iter){
+      return max_iter;
+    }
+  }
+  return i;
 }
