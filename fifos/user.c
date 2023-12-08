@@ -39,18 +39,24 @@ void data_init(){
 }
 
 void test1_create(){
-  for(int i=0;i<MAX_FILES+1;i++){
+  for(int i=0;i<=MAX_FILES+2;i++){
     sprintf(pathname, "/file%d", i);
     int fd = rd_creat(pathname);
     if(fd == -1){
       tprintf("rd_creat failed: %d\n",i);
-      if(i!=MAX_FILES){
-        halt();
-      }
+      // if(i!=MAX_FILES){
+      //   halt();
+      // }
+      halt();
     }
     memset(pathname, 0, 80);
+    // if(i%2==)
+    if(i < 1023){
+      cls();
+    }
   }
   tprintf("rd_creat ok\n");
+  halt();
   for(int i=0;i<MAX_FILES;i++){
     sprintf(pathname, "/file%d", i);
     int fd = rd_unlink(pathname);
@@ -252,7 +258,9 @@ void test_inode_rw(){
 }
 
 void discosf1(){
-  test2_big_file_write();
+  test1_create();
+  // test2_big_file_write();
+  // test4_dirs();
 
   // int r = rd_creat("/file1");
   // if(r == -1){

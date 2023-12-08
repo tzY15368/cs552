@@ -210,19 +210,18 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
         }
         int new_l1_blks_max_idx = min(new_tot_blks, 8 + pointers_per_blk);
         tprintf("new_l1_blks_max_idx=%d\n", new_l1_blks_max_idx);
-        for(uint32_t i=0;i<new_l1_blks_max_idx-8 && blks_needed > 0;i++){
+        for(uint32_t i=cur_blks;i<new_l1_blks_max_idx && blks_needed > 0;i++){
             int blk_num = get_free_block();
             if(blk_num == -1){
                 tprintf("inode_alloc_blocks l1-2: get_free_block failed\n");
                 return -1;
             }
             // tprintf("AL1(%d)", blk_num);
-
+            int actual_offset = i - 8;
             // data_byte is uint_8 array, so we need to cast it to int array
             int* l1_blk_data_int = (int*) l1_blk->data_byte;
-            l1_blk_data_int[i] = blk_num;
+            l1_blk_data_int[actual_offset] = blk_num;
 
-            // l1_blk->data_byte[i*4] = blk_num;
             blks_needed--;
         }
     }
@@ -241,7 +240,7 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
             tprintf("alloc-l2-0(%d) ", blk_num);
         }
         int new_l2_blks_max_idx = new_tot_blks;
-        for(uint32_t i=8+pointers_per_blk;i<new_l2_blks_max_idx && blks_needed > 0;i++){
+        for(uint32_t i=cur_blks;i<new_l2_blks_max_idx && blks_needed > 0;i++){
             // first calculate which l1 block this block should be in
             int l1_blk_idx = (i - 8 - pointers_per_blk) / pointers_per_blk;
             // make sure there's a l1 block
@@ -466,6 +465,11 @@ int dir_walk(char* pathname, bool create, int create_type){
         if(found == FALSE && i == sz-1){
             if(!create){
                 tprintf("dir_walk: not found, not creating\n");
+                return -1;
+            }
+            // check if exceeds max dir entries 1024
+            if(cur_inode->size >= 1024 * sizeof(dir_entry_t)){
+                tprintf("dir_walk: exceeds max dir entries\n");
                 return -1;
             }
             if(create_type == INODE_TYPE_DIR || create_type==INODE_TYPE_REG){
