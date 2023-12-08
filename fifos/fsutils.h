@@ -500,35 +500,77 @@ int dir_walk(char* pathname, bool create, int create_type){
 }
 
 int dir_inode_unlink(char* parent_name, char* fname){
-    inode_t* parent_dir;
+    inode_t* parent_inode;
     if(parent_name[0]=='\0'){
-        parent_dir = root_inode;
+        parent_inode = root_inode;
     } else {
         int parent_dir_inode = dir_walk(parent_name, FALSE, -1);
         if(parent_dir_inode == -1) return -1;
-        parent_dir = &ramfs->inode[parent_dir_inode];
+        parent_inode = &ramfs->inode[parent_dir_inode];
     }
 
-    
-    listqueue_t* parent_dir_blk_list = get_blk_list(parent_dir);
+
+    listqueue_t* parent_dir_blk_list = get_blk_list(parent_inode);
     int parent_dir_blk_list_sz = parent_dir_blk_list->size;
-    // mark deleted entry as '\0'
+    // replace deleted dir with last dir in last blk
+    block_t* last_blk = NULL;
+    int last_blk_offset = -1;
+    block_t* del_blk = NULL;
+    int del_blk_offset = -1;
+
+    last_blk_offset = (parent_inode->size % RAMDISK_BLK_SIZE) / sizeof(dir_entry_t) - 1;
+    if(last_blk_offset <0){
+        panic("dir_inode_unlink: last_blk_offset < 0\n");
+    }
+
     for(int i=0;i<parent_dir_blk_list_sz;i++){
         block_t* blk = (block_t*)listqueue_get(parent_dir_blk_list);
         if(blk == NULL){
             tprintf("dir_inode_unlink: blk is null\n");
             return -1;
         }
+        last_blk = blk;
+        if(del_blk != NULL){
+            continue;
+        }
         for(int j=0;j<RAMDISK_BLK_SIZE;j+=sizeof(dir_entry_t)){
             dir_entry_t* dir = (dir_entry_t*) &blk->data_byte[j];
             if(strcmp(dir->filename, fname, 16) == TRUE){
                 // found
-                dir->filename[0] = '\0';
-                parent_dir->size -= sizeof(dir_entry_t);
-                return 0;
+                del_blk = blk;
+                del_blk_offset = j;
+                break;
             }
         }
     }
-    tprintf("dir_inode_unlink: not found\n");
-    return -1;
+
+    if(last_blk == NULL || del_blk == NULL){
+        tprintf("dir_inode_unlink: last_blk or del_blk is null\n");
+        return -1;
+    }
+    if(last_blk_offset < 0 || del_blk_offset < 0){
+        tprintf("dir_inode_unlink: last_blk_offset or del_blk_offset < 0\n");
+        return -1;
+    }
+
+    if(last_blk == del_blk && last_blk_offset == del_blk_offset){
+        // the last one is the one to be deleted
+    } else {
+        // move last entry to del position, then unset last entry
+        dir_entry_t* last_dir = (dir_entry_t*) &last_blk->data_byte[last_blk_offset];
+        dir_entry_t* del_dir = (dir_entry_t*) &del_blk->data_byte[del_blk_offset];
+        strcpy(last_dir->filename, del_dir->filename, 16);
+        del_dir->inode_num = last_dir->inode_num;
+    }
+    // unset last entry
+    // unset the last dir entry
+    dir_entry_t* last_dir = (dir_entry_t*) &last_blk->data_byte[last_blk_offset];
+    last_dir->inode_num = 0;
+    for(int i=0;i<16;i++){
+        last_dir->filename[i] = '\0';
+    }
+
+    parent_inode->size -= sizeof(dir_entry_t);
+
+    return 0;
 }

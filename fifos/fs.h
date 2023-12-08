@@ -108,7 +108,7 @@ int rd_unlink(char *pathname){
     if(inode_no <= 0) {
         
     __asm__ __volatile__("sti");
-        return -1
+        return -1;
     };
     inode_t* inode = &ramfs->inode[inode_no];
     if(inode->type == INODE_TYPE_DIR && inode->size != 0){

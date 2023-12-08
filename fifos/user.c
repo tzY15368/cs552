@@ -258,9 +258,9 @@ void test_inode_rw(){
 }
 
 void discosf1(){
-  // test1_create();
+  test1_create();
   // test2_big_file_write();
-  test4_dirs();
+  // test4_dirs();
 
   // int r = rd_creat("/file1");
   // if(r == -1){
