@@ -130,7 +130,21 @@ int rd_unlink(char *pathname){
     }
     
     // TODO: finish this
-
+    if(slash_cnt == 1){
+        parentPath[0] = '\0';
+        strcpy(pathname + 1, filename, 16);
+    } else {
+        int i = 0;
+        int scnt= 0;
+        while(1){
+            if(pathname[i] == '/') scnt++;
+            if(scnt == slash_cnt - 1) break;
+            parentPath[i] = pathname[i];
+            i++;
+        }
+        parentPath[i] = '\0';
+        strcpy(pathname + i + 1, filename, 16);
+    }
     return dir_inode_unlink(parentPath, filename);
 }
 
