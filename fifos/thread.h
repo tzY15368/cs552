@@ -89,3 +89,48 @@ int thread_create(void* func){
     return 0;
 }
 
+void memcpy(void* dest, void* src, int size){
+    for(int i=0;i<size;i++){
+        ((char*)dest)[i] = ((char*)src)[i];
+    }
+}
+
+int ffork(){
+    thread_ctl_blk_t* child_tcb = thread_pool_get_idle();
+    if(child_tcb == NULL){
+        tprintf("ffork: no idle thread\n");
+        return -1;
+    }
+    tprintf("ffork(%d);", child_tcb->id);
+    
+    thread_ctl_blk_t* parent_tcb = get_current_tcb(TRUE);
+    int parent_tid = parent_tcb->id;
+    // copy stack
+    memcpy(child_tcb->stack, parent_tcb->stack, STACK_SIZE);
+
+
+    uint32_t stack_ptr = (uint32_t) child_tcb->stack + STACK_SIZE - 1;
+
+    *(((uint32_t*) stack_ptr) - 0) = (uint32_t) thread_exit;
+
+    child_tcb->bp = (uint32_t) stack_ptr - 1;
+    child_tcb->func = (uint32_t) func;
+
+    uint32_t stack = (uint32_t) stack_ptr - sizeof(context_t);
+    child_tcb->ctx = (context_t*) stack;
+
+    child_tcb->bp = parent_tcb->bp;
+    child_tcb->esp = parent_tcb->esp;
+    child_tcb->func = parent_tcb->func;
+    child_tcb->state = READY;
+    ready_queue_add(child_tcb);
+    sched();
+    thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
+    if(cur_tcb->id == parent_tid){
+        // parent
+        return 1;
+    } else {
+        // child
+        return 0;
+    }
+}
