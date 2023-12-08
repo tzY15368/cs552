@@ -244,34 +244,36 @@ void test_inode_rw(){
 }
 
 void discosf1(){
-  int r = rd_creat("/file1");
-  if(r == -1){
-    panic("rd_create failed\n");
-  }
+  // int r = rd_creat("/file1");
+  // if(r == -1){
+  //   panic("rd_create failed\n");
+  // }
 
-  int fd = rd_open("/file1");
-  if(fd == -1){
-    panic("rd_open failed\n");
-  }
-  tprintf(">>>>>>");
+  // int fd = rd_open("/file1");
+  // if(fd == -1){
+  //   panic("rd_open failed\n");
+  // }
+  // tprintf(">>>>>>");
 
-  int w = rd_write(fd, data1, 72*256 + 2*256 + 10);
-  if(w == -1){
-    panic("rd_write failed\n");
-  }
+  // int w = rd_write(fd, data1, 72*256 + 2*256 + 10);
+  // if(w == -1){
+  //   panic("rd_write failed\n");
+  // }
 
-  r = rd_lseek(fd, 0);
-  if(r == -1){
-    panic("rd_lseek failed\n");
-  }
+  // r = rd_lseek(fd, 0);
+  // if(r == -1){
+  //   panic("rd_lseek failed\n");
+  // }
 
-  char buf[270];
-  int r2 = rd_read(fd, buf, 72*256 + 10);
-  if(r2 == -1){
-    panic("rd_read failed\n");
-  }
-  buf[260] = '\0';
-  tprintf("read: %s\n", buf+240);
+  // char buf[270];
+  // int r2 = rd_read(fd, buf, 72*256 + 10);
+  // if(r2 == -1){
+  //   panic("rd_read failed\n");
+  // }
+  // buf[260] = '\0';
+  // tprintf("read: %s\n", buf+240);
+
+
   // tprintf("df1\n");
   // listqueue_t* lq = path_to_list("/dir1");
   // tprintf("q len:%d\n", lq->size);
@@ -280,7 +282,7 @@ void discosf1(){
   //   char* buf = listqueue_get(lq);
   //   tprintf("/%s", buf);
   // }
-  // test4_dirs();
+  test4_dirs();
   // int r = rd_mkdir("/dir1");
   // tprintf("mkdir res:%d\n", r);
 

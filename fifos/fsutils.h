@@ -173,7 +173,7 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
     if(new_size_total > (l0_size + l1_size + l2_size)){
         return -1;
     }
-    tprintf("inode_alloc_blocks(%d): cur_blks=%d, new_tot_blks=%d, blks_needed=%d\n", new_size_total, cur_blks, new_tot_blks, blks_needed);
+    // tprintf("inode_alloc_blocks(%d): cur_blks=%d, new_tot_blks=%d, blks_needed=%d\n", new_size_total, cur_blks, new_tot_blks, blks_needed);
     // l0
     if(blks_needed > 0){
         
@@ -186,10 +186,10 @@ int inode_alloc_blocks(inode_t* inode, uint32_t add_size){
                 return -1;
             }
             inode->location[i] = &ramfs->blocks[blk_num];
-            tprintf("alloc(%d) ", blk_num);
+            // tprintf("alloc(%d) ", blk_num);
             blks_needed--;
         }
-        tprintf("\n");
+        // tprintf("\n");
     }
     // l1
     if(blks_needed > 0){
@@ -278,7 +278,7 @@ int inode_rw_bytes(inode_t* inode, uint32_t pos, bool is_write, char* write_buf,
         return -1;
     }
     if(pos > inode->size){
-        tprintf("inode_rw_bytes: pos > inode->size\n");
+        tprintf("inode_rw_bytes: pos %d > inode->size %d\n", pos, inode->size);
         return -1;
     }
 
@@ -347,11 +347,7 @@ int inode_write_bytes(inode_t* inode, uint32_t pos, char* write_buf, uint32_t si
         return -1;
     }
     if(pos==-1){
-        if(inode->type == INODE_TYPE_DIR){
-            pos = inode->size * sizeof(dir_entry_t);
-        } else {
-            pos = inode->size;
-        }
+        pos = inode->size;
     }
     // tprintf("write info:%s", write_buf);
     // if pos+size > inode->size, then we need to allocate more blocks
@@ -396,7 +392,7 @@ int dir_walk(char* pathname, bool create, int create_type){
     for(int i=0; i<sz; i++){
         char* cur_path = listqueue_get(pathQueue);
         // (((inode_t*) cur_inode - root_inode) / sizeof(inode_t))
-        tprintf("dir_walk: inum: %d, type:%d, path: %s\n", cur_inode, cur_inode->type, cur_path);
+        // tprintf("dir_walk: inum: %d, type:%d, path: %s\n", cur_inode, cur_inode->type, cur_path);
         if(i!=sz-1 && cur_inode->type != INODE_TYPE_DIR){
             tprintf("dir_walk: not a dir\n");
             return -1;
@@ -422,7 +418,7 @@ int dir_walk(char* pathname, bool create, int create_type){
                         return dir->inode_num;
                     }
                     found = TRUE;
-                    tprintf("--nxt num: %d--", dir->inode_num);
+                    // tprintf("--nxt num: %d--", dir->inode_num);
                     cur_inode = &ramfs->inode[dir->inode_num];
                     shouldBreak = TRUE;
                     break;
@@ -453,8 +449,7 @@ int dir_walk(char* pathname, bool create, int create_type){
                 // append new dir to cur_inode
                 int r = inode_write_bytes(cur_inode, -1, (char*) new_dir, sizeof(dir_entry_t));
                 if(r != -1) {
-                    cur_inode->size += 1;
-                    int cur_inode_no = ((inode_t*) cur_inode - root_inode) / sizeof(inode_t);
+                    // cur_inode->size += 1;
                     tprintf("dir_walk: create dir ok on inode-%d, newsz=%d\n", cur_inode, cur_inode->size);
                 }
                 return r==-1? -1: new_dir->inode_num;
@@ -472,20 +467,20 @@ int dir_walk(char* pathname, bool create, int create_type){
 }
 
 int dir_inode_unlink(char* parent_name, char* fname){
-    int parent_dir_inode = dir_walk(parent_name, FALSE, -1);
-    if(parent_dir_inode == -1) return -1;
-    // first pass finds the last entry and removes it from the block
-    inode_t* parent_dir = &ramfs->inode[parent_dir_inode];
-    listqueue_t* parent_dir_blk_list = get_blk_list(parent_dir);
-    int parent_dir_blk_list_sz = parent_dir_blk_list->size;
-    // move the last entry to the deleted entry
-    block_t* last_blk;
-    dir_entry_t* last_entry;
-    for(int i=0;i<parent_dir_blk_list_sz;i++){
-        last_blk = (block_t*)listqueue_get(parent_dir_blk_list);
-    }
-    int entry_index = (parent_dir->size / sizeof(dir_entry_t)) % (sizeof(block_t) / sizeof(dir_entry_t)) - 1;
-    last_entry = (dir_entry_t*)last_blk->data_byte + entry_index * sizeof(dir_entry_t);
-    // second pass finds the deleted entry if it's not the last one, and move the last entry to the deleted entry
-    // if()
+    // int parent_dir_inode = dir_walk(parent_name, FALSE, -1);
+    // if(parent_dir_inode == -1) return -1;
+    // // first pass finds the last entry and removes it from the block
+    // inode_t* parent_dir = &ramfs->inode[parent_dir_inode];
+    // listqueue_t* parent_dir_blk_list = get_blk_list(parent_dir);
+    // int parent_dir_blk_list_sz = parent_dir_blk_list->size;
+    // // move the last entry to the deleted entry
+    // block_t* last_blk;
+    // dir_entry_t* last_entry;
+    // for(int i=0;i<parent_dir_blk_list_sz;i++){
+    //     last_blk = (block_t*)listqueue_get(parent_dir_blk_list);
+    // }
+    // int entry_index = (parent_dir->size / sizeof(dir_entry_t)) % (sizeof(block_t) / sizeof(dir_entry_t)) - 1;
+    // last_entry = (dir_entry_t*)last_blk->data_byte + entry_index * sizeof(dir_entry_t);
+    // // second pass finds the deleted entry if it's not the last one, and move the last entry to the deleted entry
+    // // if()
 }

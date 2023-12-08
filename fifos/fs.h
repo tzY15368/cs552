@@ -94,8 +94,14 @@ int rd_unlink(char *pathname){
     int inode_no = dir_walk(pathname, FALSE, -1);
     if(inode_no <= 0) return -1;
     inode_t* inode = &ramfs->inode[inode_no];
-    if(inode->type == INODE_TYPE_DIR && inode->size != 0)return -1;
-    if(inode->ref_cnt != 0) return -1;
+    if(inode->type == INODE_TYPE_DIR && inode->size != 0){
+        tprintf("dir not empty");
+        return -1;
+    }
+    if(inode->ref_cnt != 0){
+        tprintf("inode in use");
+        return -1;
+    }
     
     // free inode
     inode->in_use = FALSE;
@@ -145,7 +151,6 @@ int rd_read(int fd, char *address, int num_bytes){
     thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
     file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
     if(file_descriptor->in_use == FALSE) return -1;
-    if(file_descriptor->inode->type == INODE_TYPE_DIR) return -1;
     int r = inode_read_bytes(file_descriptor->inode, file_descriptor->offset, address, num_bytes);
     if(r == -1){
         return -1;
@@ -158,7 +163,6 @@ int rd_write(int fd, char *address, int num_bytes){
     thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
     file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
     if(file_descriptor->in_use == FALSE) return -1;
-    if(file_descriptor->inode->type == INODE_TYPE_DIR) return -1;
     int r = inode_write_bytes(file_descriptor->inode, file_descriptor->offset, address, num_bytes);
     if(r == -1){
         return -1;
@@ -185,8 +189,8 @@ int rd_readdir(int fd, char *address){
     }
     // return 1 on ok, 0 on eof, -1 on error
     if(file_descriptor->offset >= file_descriptor->inode->size) return 0;
-    int r = inode_read_bytes(file_descriptor->inode, file_descriptor->offset * sizeof(dir_entry_t), address, sizeof(dir_entry_t));
+    int r = inode_read_bytes(file_descriptor->inode, file_descriptor->offset, address, sizeof(dir_entry_t));
     if(r == -1) return -1;
-    file_descriptor->offset += 1;
+    file_descriptor->offset += sizeof(dir_entry_t);
     return 1;
 }
