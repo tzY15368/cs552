@@ -114,7 +114,6 @@ int ffork(){
     *(((uint32_t*) stack_ptr) - 0) = (uint32_t) thread_exit;
 
     child_tcb->bp = (uint32_t) stack_ptr - 1;
-    child_tcb->func = (uint32_t) func;
 
     uint32_t stack = (uint32_t) stack_ptr - sizeof(context_t);
     child_tcb->ctx = (context_t*) stack;
@@ -123,6 +122,15 @@ int ffork(){
     child_tcb->esp = parent_tcb->esp;
     child_tcb->func = parent_tcb->func;
     child_tcb->state = READY;
+
+    // copy fds
+    for(int i=0;i<FDS_PER_THREAD;i++){
+        child_tcb->fds[i].in_use = parent_tcb->fds[i].in_use;
+        child_tcb->fds[i].fd_num = parent_tcb->fds[i].fd_num;
+        child_tcb->fds[i].offset = parent_tcb->fds[i].offset;
+        child_tcb->fds[i].inode = parent_tcb->fds[i].inode;
+    }
+
     ready_queue_add(child_tcb);
     sched();
     thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);

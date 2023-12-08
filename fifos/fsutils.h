@@ -500,10 +500,16 @@ int dir_walk(char* pathname, bool create, int create_type){
 }
 
 int dir_inode_unlink(char* parent_name, char* fname){
-    int parent_dir_inode = dir_walk(parent_name, FALSE, -1);
-    if(parent_dir_inode == -1) return -1;
-    // // first pass finds the last entry and removes it from the block
-    inode_t* parent_dir = &ramfs->inode[parent_dir_inode];
+    inode_t* parent_dir;
+    if(parent_name[0]=='\0'){
+        parent_dir = root_inode;
+    } else {
+        int parent_dir_inode = dir_walk(parent_name, FALSE, -1);
+        if(parent_dir_inode == -1) return -1;
+        parent_dir = &ramfs->inode[parent_dir_inode];
+    }
+
+    
     listqueue_t* parent_dir_blk_list = get_blk_list(parent_dir);
     int parent_dir_blk_list_sz = parent_dir_blk_list->size;
     // mark deleted entry as '\0'

@@ -54,29 +54,40 @@ void ramdisk_init(){
 
 
 int rd_creat(char *pathname){
+    __asm__ __volatile__("cli");
     int r = dir_walk(pathname, TRUE, INODE_TYPE_REG);
+    __asm__ __volatile__("sti");
     return r == -1? -1: 0;
 };
 
 int rd_mkdir(char *pathname){
+    __asm__ __volatile__("cli");
     int r = dir_walk(pathname, TRUE, INODE_TYPE_DIR);
+    __asm__ __volatile__("sti");
     return r == -1? -1: 0;
 }
 
 int rd_open(char *pathname){
+    __asm__ __volatile__("cli");
     int r = dir_walk(pathname, FALSE, -1);
     if(r < 0) {
         tprintf("rd_open: dir_walk failed\n");
+        
+        __asm__ __volatile__("sti");
         return -1;
     }
     thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
     int new_fd = get_new_fd(&ramfs->inode[r]);
     if(new_fd == -1) {
         tprintf("rd_open: get_new_fd failed\n");
+        
+    __asm__ __volatile__("sti");
         return -1;
     }
     if(ramfs->inode[r].ref_cnt > 0) {
         tprintf("rd_open: inode in use\n");
+        
+    __asm__ __volatile__("sti");
         return -1;
     }
     ramfs->inode[r].ref_cnt++;
@@ -84,22 +95,30 @@ int rd_open(char *pathname){
     cur_tcb->fds[new_fd].in_use = TRUE;
     cur_tcb->fds[new_fd].fd_num = new_fd;
     cur_tcb->fds[new_fd].offset = 0;
+    __asm__ __volatile__("sti");
     return new_fd;
 }
 
 int rd_unlink(char *pathname){
+    __asm__ __volatile__("cli");
     if(pathname[0] != '/') return -1;
     if(pathname[1] == '\0') return -1;
 
     int inode_no = dir_walk(pathname, FALSE, -1);
-    if(inode_no <= 0) return -1;
+    if(inode_no <= 0) {
+        
+    __asm__ __volatile__("sti");
+        return -1
+    };
     inode_t* inode = &ramfs->inode[inode_no];
     if(inode->type == INODE_TYPE_DIR && inode->size != 0){
         tprintf("dir not empty");
+    __asm__ __volatile__("sti");
         return -1;
     }
     if(inode->ref_cnt != 0){
         tprintf("inode in use");
+    __asm__ __volatile__("sti");
         return -1;
     }
     
@@ -145,67 +164,113 @@ int rd_unlink(char *pathname){
         parentPath[i] = '\0';
         strcpy(pathname + i + 1, filename, 16);
     }
+    __asm__ __volatile__("sti");
     return dir_inode_unlink(parentPath, filename);
 }
 
 int rd_close(int fd){
+    __asm__ __volatile__("cli");
     if(fd < 0) return -1;
     thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
     file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
     file_descriptor->inode->ref_cnt--;
-    if(file_descriptor->in_use == FALSE) return -1;
+    if(file_descriptor->in_use == FALSE) {
+        
+        __asm__ __volatile__("sti");
+        return -1;
+    }
     file_descriptor->in_use = FALSE;
     file_descriptor->fd_num = -1;
     file_descriptor->offset = 0;
     file_descriptor->inode = NULL;
+    __asm__ __volatile__("sti");
     return 0;
 }
 int rd_read(int fd, char *address, int num_bytes){
-    if(fd < 0) return -1;
+    __asm__ __volatile__("cli");
+    if(fd < 0){
+        
+    __asm__ __volatile__("sti");
+        return -1;
+    }
     thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
     file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
     if(file_descriptor->in_use == FALSE) return -1;
     int r = inode_read_bytes(file_descriptor->inode, file_descriptor->offset, address, num_bytes);
     if(r == -1){
+    __asm__ __volatile__("sti");
         return -1;
     }
     file_descriptor->offset = min(file_descriptor->offset + num_bytes, file_descriptor->inode->size);
+    
+    __asm__ __volatile__("sti");
     return r;
 }
 int rd_write(int fd, char *address, int num_bytes){
-    if(fd < 0) return -1;
+    __asm__ __volatile__("cli");
+    if(fd < 0){
+        
+    __asm__ __volatile__("sti");
+     return -1;
+    }
     tprintf("n bytes: %d\n", num_bytes);
     thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
     file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
     if(file_descriptor->in_use == FALSE) return -1;
     int r = inode_write_bytes(file_descriptor->inode, file_descriptor->offset, address, num_bytes);
     if(r == -1){
+    __asm__ __volatile__("sti");
         return -1;
     }
     file_descriptor->offset += num_bytes;
     return r;
 }
 int rd_lseek(int fd, int offset){
-    if(fd < 0) return -1;
+    __asm__ __volatile__("cli");
+    if(fd < 0){
+        
+    __asm__ __volatile__("sti");
+        return -1;
+    }
     thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
     file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
-    if(file_descriptor->in_use == FALSE) return -1;
-    if(offset < 0 || offset > file_descriptor->inode->size) return -1;
+    if(file_descriptor->in_use == FALSE) {
+        
+    __asm__ __volatile__("sti");return -1;
+    }
+    if(offset < 0 || offset > file_descriptor->inode->size) {
+    __asm__ __volatile__("sti");return -1;
+    }
     file_descriptor->offset = offset;
+    __asm__ __volatile__("sti");
     return offset;
 }
 int rd_readdir(int fd, char *address){
-    if(fd < 0) return -1;
+    __asm__ __volatile__("cli");
+    if(fd < 0) {
+        
+        __asm__ __volatile__("sti");return -1;
+    }
     thread_ctl_blk_t* cur_tcb = get_current_tcb(TRUE);
     file_descriptor_t* file_descriptor = &cur_tcb->fds[fd];
     if(file_descriptor->in_use == FALSE) {
         tprintf("rd_readdir: file_descriptor->in_use == FALSE\n");
+        
+    __asm__ __volatile__("sti");
         return -1;
     }
     // return 1 on ok, 0 on eof, -1 on error
-    if(file_descriptor->offset >= file_descriptor->inode->size) return 0;
+    if(file_descriptor->offset >= file_descriptor->inode->size) {
+        
+    __asm__ __volatile__("sti");
+        return 0;
+    }
     int r = inode_read_bytes(file_descriptor->inode, file_descriptor->offset, address, sizeof(dir_entry_t));
-    if(r == -1) return -1;
+    if(r == -1) {
+    __asm__ __volatile__("sti");
+        return -1;
+    }
     file_descriptor->offset += sizeof(dir_entry_t);
+    __asm__ __volatile__("sti");
     return 1;
 }
