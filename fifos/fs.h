@@ -67,6 +67,19 @@ int rd_mkdir(char *pathname){
     return r == -1? -1: 0;
 }
 
+void dump_dir_inode_first_loc(int inode_num){
+    tprintf("dumping inode %d\n", inode_num);
+    inode_t* inode = &ramfs->inode[inode_num];
+    block_t* dirs_blk = inode->location[1];
+    int iters = inode->size / sizeof(dir_entry_t);
+    for(int i=0;i<iters;i++){
+        dir_entry_t* entries_ptr = (dir_entry_t*) dirs_blk->data_byte;
+        dir_entry_t* dir = entries_ptr+i;
+        tprintf("ent %s @ %d\n", dir->filename, dir->inode_num);
+    }
+    tprintf("EOF DIUMP");
+}
+
 int rd_open(char *pathname){
     __asm__ __volatile__("cli");
     int r = dir_walk(pathname, FALSE, -1);
@@ -108,6 +121,7 @@ int rd_unlink(char *pathname){
     if(inode_no <= 0) {
         
         __asm__ __volatile__("sti");
+        tprintf("not found for %s", pathname);
         return -1;
     };
     inode_t* inode = &ramfs->inode[inode_no];
@@ -147,22 +161,21 @@ int rd_unlink(char *pathname){
     for(int i=0; i<16; i++){
         if(pathname[i] == '/') slash_cnt++;
     }
+    // tprintf("rd-unlink: %s - slash-cnt:%d\n", pathname, slash_cnt);
     
     // TODO: finish this
     if(slash_cnt == 1){
         parentPath[0] = '\0';
         strcpy(pathname + 1, filename, 16);
     } else {
-        int i = 0;
-        int scnt= 0;
-        while(1){
-            if(pathname[i] == '/') scnt++;
-            if(scnt == slash_cnt - 1) break;
-            parentPath[i] = pathname[i];
-            i++;
+        int last_slash_idx = -1;
+        for(int i=0; i<16; i++){
+            if(pathname[i] == '/') last_slash_idx = i;
         }
-        parentPath[i] = '\0';
-        strcpy(pathname + i + 1, filename, 16);
+        tprintf("last slash idx: %d", last_slash_idx);
+
+        strcpy(pathname, parentPath, last_slash_idx);
+        strcpy(pathname + last_slash_idx + 1, filename, 16);
     }
     __asm__ __volatile__("sti");
     return dir_inode_unlink(parentPath, filename);

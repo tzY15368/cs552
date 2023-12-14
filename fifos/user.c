@@ -8,7 +8,7 @@
 #include "utils.h"
 #endif
 
-#define MAX_FILES 1023
+#define MAX_FILES 10
 #define BLK_SZ 256		/* Block size */
 #define DIRECT 8		/* Direct pointers in location attribute */
 #define PTR_SZ 4		/* 32-bit [relative] addressing */
@@ -39,15 +39,15 @@ void data_init(){
 }
 
 void test1_create(){
-  for(int i=0;i<=MAX_FILES+2;i++){
+  for(int i=0;i<=MAX_FILES+1;i++){
     sprintf(pathname, "/file%d", i);
     int fd = rd_creat(pathname);
     if(fd == -1){
       tprintf("rd_creat failed: %d\n",i);
-      // if(i!=MAX_FILES){
-      //   halt();
-      // }
-      halt();
+      if(i!=MAX_FILES+1){
+        halt();
+      }
+      // halt();
     }
     memset(pathname, 0, 80);
     // if(i%2==)
@@ -56,7 +56,9 @@ void test1_create(){
     }
   }
   tprintf("rd_creat ok\n");
-  halt();
+  // dump_dir_inode_first_loc(0);
+  // halt();
+  // halt();
   for(int i=0;i<MAX_FILES;i++){
     sprintf(pathname, "/file%d", i);
     int fd = rd_unlink(pathname);
@@ -147,7 +149,7 @@ cls();
 }
 
 
-static dir_entry_t ent;
+static dir_entry_t ent_global;
 // test dirs
 void test4_dirs(){
   int r = rd_mkdir("/dir1");
@@ -173,14 +175,14 @@ void test4_dirs(){
   tprintf("--%d--", fd);
   while(1){
     tprintf("fd:%d", _fd);
-    r = rd_readdir(_fd, (char*)&ent);
+    r = rd_readdir(_fd, (char*)&ent_global);
     if(r == -1){
       panic("rd_readdir failed\n");
     } else if (r == 0) {
       tprintf("readdir: EOF\n");
       break;
     } else {
-      tprintf("readdir ok: %s @ %d\n", ent.filename, ent.inode_num);
+      tprintf("readdir ok: %s @ %d\n", ent_global.filename, ent_global.inode_num);
     }
   }
   
@@ -258,10 +260,42 @@ void test_inode_rw(){
 }
 
 void discosf1(){
-  test1_create();
+  // test1_create();
   // test2_big_file_write();
-  // test4_dirs();
+  test4_dirs();
 
+  // test unlink
+  // int r = rd_mkdir("/dir1");
+  // if(r == -1) panic("mkdir failed\n");
+
+  // r = rd_mkdir("/dir1/dir2");
+  // if(r == -1) panic("mkdir failed\n");
+
+  // r = rd_mkdir("/dir1/dir3");
+  // if(r == -1) panic("mkdir failed\n");
+
+  // cls();
+
+  // r = rd_unlink("/dir1/dir2");
+  // if(r == -1) panic("unlink failed\n");
+  // tprintf(">>>");
+  // r = rd_unlink("/dir1/dir3");
+  // if(r == -1) panic("unlink failed\n");
+  
+  // r = rd_open("/dir1");
+  // if(r==-1) panic("open failed");
+
+  // r = rd_readdir(r, (char*)&ent_global);
+
+  // // if(r == -1) panic("readdir failed\n");
+  // // int fd = r;
+  // // tprintf("readdir ok: %s @ %d\n", ent_global.filename, ent_global.inode_num);
+
+  // // r = rd_readdir(fd, "/dir1");
+  // // if(r != 0) panic("not eof");
+  // tprintf("final r: %d", r);
+
+  // halt();
   // int r = rd_creat("/file1");
   // if(r == -1){
   //   panic("rd_create failed\n");
